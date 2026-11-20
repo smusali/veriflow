@@ -47,7 +47,8 @@ _FINDING_FIELDS = frozenset(
         "reason",
     }
 )
-_EVIDENCE_FIELDS = frozenset({"findings"})
+_EVIDENCE_FIELDS = frozenset({"findings", "stage_events"})
+_STAGE_EVENT_FIELDS = frozenset({"node_id", "turn", "start", "anchor"})
 
 
 class JudgeCode(StrEnum):
@@ -129,9 +130,20 @@ class CriterionFinding:
 
 
 @dataclass(frozen=True, slots=True)
+class StageEvent:
+    """An assistant action that enters a workflow stage."""
+
+    node_id: str
+    turn: int
+    start: int
+    anchor: str
+
+
+@dataclass(frozen=True, slots=True)
 class Evidence:
     findings: tuple[CriterionFinding, ...]
     by_id: Mapping[str, CriterionFinding]
+    stage_events: tuple[StageEvent, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -1322,6 +1334,67 @@ def _group_scope(item: _JudgedObligation) -> str:
     return f"criterion {item.parent_id}"
 
 
+def _require_offset(value: object, location: str) -> int:
+    # bool is an int subclass, so it is excluded before the int check.
+    if isinstance(value, bool) or not isinstance(value, int):
+        fail(JudgeCode.INVALID_EVIDENCE, f"{location} must be an integer offset.")
+    if value < 0:
+        fail(JudgeCode.INVALID_EVIDENCE, f"{location} {value} is negative.")
+    return value
+
+
+def _read_stage_event(
+    value: object,
+    index: int,
+    transcript: Transcript,
+    node_ids: frozenset[str],
+) -> StageEvent:
+    location = f"stage_events[{index}]"
+    code = JudgeCode.INVALID_EVIDENCE
+    fields = expect_exact_object(value, location, _STAGE_EVENT_FIELDS, code=code)
+    node_id = require_text_field(fields, "node_id", location, code=code)
+    if node_id not in node_ids:
+        fail(code, f"{location}.node_id {node_id!r} is not a workflow node.")
+    turn = _require_turn_index(
+        require_field(fields, "turn", location, code=code),
+        f"{location}.turn",
+        len(transcript.turns),
+    )
+    spoken = transcript.turns[turn]
+    if spoken.role != "assistant":
+        fail(code, f"{location}.turn {turn} is not an assistant turn.")
+    start = _require_offset(require_field(fields, "start", location, code=code), f"{location}.start")
+    anchor = require_text_field(fields, "anchor", location, code=code)
+    excerpt = spoken.content[start : start + len(anchor)]
+    if excerpt != anchor:
+        fail(code, f"{location}.anchor is not in the assistant turn at start {start}.")
+    return StageEvent(node_id=node_id, turn=turn, start=start, anchor=anchor)
+
+
+def _read_stage_events(
+    value: object,
+    transcript: Transcript,
+    node_ids: frozenset[str],
+) -> tuple[StageEvent, ...]:
+    items = expect_array(value, "evidence.stage_events", code=JudgeCode.INVALID_EVIDENCE)
+    events: list[StageEvent] = []
+    seen: set[tuple[str, int, int]] = set()
+    for index, item in enumerate(items):
+        event = _read_stage_event(item, index, transcript, node_ids)
+        key = (event.node_id, event.turn, event.start)
+        if key in seen:
+            fail(
+                JudgeCode.INVALID_EVIDENCE,
+                (
+                    f"stage_events[{index}] repeats node {event.node_id} "
+                    f"at turn {event.turn}, start {event.start}."
+                ),
+            )
+        seen.add(key)
+        events.append(event)
+    return tuple(events)
+
+
 def _require_turn_index(value: object, location: str, turn_count: int) -> int:
     # bool is an int subclass, so it is excluded before the int check.
     if isinstance(value, bool) or not isinstance(value, int):
@@ -1543,11 +1616,13 @@ def _read_finding(value: object, index: int, turn_count: int) -> CriterionFindin
 def _ordered_evidence(
     found: Mapping[str, CriterionFinding],
     obligations: tuple[_JudgedObligation, ...],
+    stage_events: tuple[StageEvent, ...],
 ) -> Evidence:
     ordered = tuple(found[item.id] for item in obligations)
     return Evidence(
         findings=ordered,
         by_id=MappingProxyType({finding.criterion_id: finding for finding in ordered}),
+        stage_events=stage_events,
     )
 
 
@@ -1583,7 +1658,12 @@ def parse_evidence(document: object, transcript: Transcript, rubric: Rubric) -> 
         fail(code, f"Every obligation needs a finding. Missing: {', '.join(missing)}.")
     _require_alternative_findings(found, obligations)
     _require_parent_support(found, rubric)
-    return _ordered_evidence(found, obligations)
+    stage_events = _read_stage_events(
+        require_field(fields, "stage_events", "evidence", code=code),
+        transcript,
+        frozenset(rubric.by_node),
+    )
+    return _ordered_evidence(found, obligations, stage_events)
 
 
 def _empty_finding(item: _JudgedObligation) -> CriterionFinding:
@@ -1632,7 +1712,7 @@ def _evidence_without_turns(rubric: Rubric) -> Evidence:
         found[item.id] = finding
     _require_alternative_findings(found, obligations)
     _require_parent_support(found, rubric)
-    return _ordered_evidence(found, obligations)
+    return _ordered_evidence(found, obligations, ())
 
 
 def _findings_schema() -> dict[str, object]:
@@ -1683,9 +1763,36 @@ def _findings_schema() -> dict[str, object]:
                 "type": "array",
                 "description": "One finding for every criterion and subrequirement.",
                 "items": finding_schema,
-            }
+            },
+            "stage_events": {
+                "type": "array",
+                "description": (
+                    "Assistant actions that enter a workflow stage. "
+                    "Empty when no stage is entered. Do not repeat the same node, turn, and start."
+                ),
+                "items": _object_schema(
+                    {
+                        "node_id": _string_field("Workflow node whose stage this action enters."),
+                        "turn": {
+                            "type": "integer",
+                            "description": "Zero-based index of the assistant turn that enters the stage.",
+                        },
+                        "start": {
+                            "type": "integer",
+                            "description": (
+                                "Zero-based index of anchor in that turn's content."
+                            ),
+                        },
+                        "anchor": _string_field(
+                            "Contiguous slice of that assistant turn. "
+                            "The content from start through the end of anchor equals anchor."
+                        ),
+                    },
+                    "One assistant action that enters a workflow stage.",
+                ),
+            },
         },
-        "Transcript-grounded findings for every rubric obligation.",
+        "Transcript-grounded findings and stage entries for every rubric obligation.",
     )
 
 
@@ -1731,6 +1838,23 @@ Output constraints:
 - A conditional trigger that never occurs is not_applicable. An exclusive alternative the transcript does not settle is uncertain. When one alternative in a group is applicable, the others in that group are not_applicable.
 - A spoken confirmation may support a confirmation obligation. It does not show that any system stored the result. Do not claim that a record was saved.
 
+Also return stage_events. A stage event records an assistant action that enters a workflow stage. It is not a path, a score, or a claim that an edge exists.
+
+Each event has node_id, turn, start, and anchor.
+- node_id is a workflow node from the obligations.
+- turn is an assistant turn index.
+- anchor is a contiguous slice of that turn's content.
+- start is the zero-based index of anchor in that content, so the content from start through the end of anchor equals anchor.
+
+Emit an event only when the assistant actually enters that stage.
+- Meeting a criterion is not by itself an entry. Quoting, explaining, or promising the stage is not an entry.
+- An early detail from a later stage, such as a reminder offer before wrap-up, can support that criterion. Do not emit a stage event for it.
+- Repeating, correcting, or resuming the same stage is not a new event. Continuing that stage after its exception handler is the same event, not a new one.
+- A separate execution after the workflow has already closed is a new event.
+- Off-topic repairs and complaints are not events.
+- Do not repeat the same node_id, turn, and start.
+- Do not return a path or a score.
+
 Example, not a transcript to copy. Turns: 0 user "How do I reserve a lane?" 1 assistant "People usually give a name, then we hold a lane." 2 user "Please hold lane 3 for Sam Rivera. I have reserved here before." 3 assistant "I will book that for you tomorrow."
 The explanation on turn 1 does not reserve a lane. If that explanation is the only support for holding a lane, result is unmet, evidence_turns may be [1], and action_turn is null. The promise on turn 3 does not confirm one, so confirmation is unmet with action_turn null. The name the caller stated can satisfy a name obligation, with action_turn 2. A reply of "maybe lane 3" is insufficient for acceptance, not met. If the caller has reserved before, a new-caller alternative is not_applicable with evidence_turns [] and action_turn null.
 """
@@ -1738,7 +1862,7 @@ The explanation on turn 1 does not reserve a lane. If that explanation is the on
 _EVIDENCE_REPAIR_INSTRUCTIONS = (
     _EVIDENCE_INSTRUCTIONS
     + "\nThe user message includes the turns, the obligations, rejected findings, and a validation error. "
-    "Return one complete replacement findings document that fixes the error. "
+    "Return one complete replacement document, with findings and stage_events, that fixes the error. "
     "Do not add obligations or turns.\n"
 )
 
@@ -1822,6 +1946,7 @@ __all__ = [
     "Criterion",
     "CriterionFinding",
     "Evidence",
+    "StageEvent",
     "FindingResult",
     "JudgeCode",
     "JudgeError",

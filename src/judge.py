@@ -1836,6 +1836,7 @@ Output constraints:
 - Describing a procedure is not performing it. Promising to do something later is not completing it. Both are unmet. You may cite the explaining or promising turn, with a null action_turn.
 - If the obligation is satisfied by honoring a refusal, that refusal is met. If the obligation requires an action the speaker refuses, do not mark it met.
 - A conditional trigger that never occurs is not_applicable. An exclusive alternative the transcript does not settle is uncertain. When one alternative in a group is applicable, the others in that group are not_applicable.
+- A conditional obligation applies only when its own condition occurred. An apology, a complaint about an earlier event, or repairing an interruption does not establish that condition. Paraphrase counts only after the condition has occurred.
 - A spoken confirmation may support a confirmation obligation. It does not show that any system stored the result. Do not claim that a record was saved.
 
 Also return stage_events. A stage event records an assistant action that enters a workflow stage. It is not a path, a score, or a claim that an edge exists.
@@ -1856,7 +1857,7 @@ Emit an event only when the assistant actually enters that stage.
 - Do not return a path or a score.
 
 Example, not a transcript to copy. Turns: 0 user "How do I reserve a lane?" 1 assistant "People usually give a name, then we hold a lane." 2 user "Please hold lane 3 for Sam Rivera. I have reserved here before." 3 assistant "I will book that for you tomorrow."
-The explanation on turn 1 does not reserve a lane. If that explanation is the only support for holding a lane, result is unmet, evidence_turns may be [1], and action_turn is null. The promise on turn 3 does not confirm one, so confirmation is unmet with action_turn null. The name the caller stated can satisfy a name obligation, with action_turn 2. A reply of "maybe lane 3" is insufficient for acceptance, not met. If the caller has reserved before, a new-caller alternative is not_applicable with evidence_turns [] and action_turn null.
+The explanation on turn 1 does not reserve a lane. If that explanation is the only support for holding a lane, result is unmet, evidence_turns may be [1], and action_turn is null. The promise on turn 3 does not confirm one, so confirmation is unmet with action_turn null. The name the caller stated can satisfy a name obligation, with action_turn 2. A reply of "maybe lane 3" is insufficient for acceptance, not met. If the caller has reserved before, a new-caller alternative is not_applicable with evidence_turns [] and action_turn null. An apology for interrupting the caller does not make a conditional unclear-reply obligation applicable. That obligation stays not_applicable, with evidence_turns [] and action_turn null.
 """
 
 _EVIDENCE_REPAIR_INSTRUCTIONS = (

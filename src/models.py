@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
 from typing import Protocol
 
+from .errors import JudgeCode, JudgeError
 from .utils import JsonValue
 
 
@@ -103,6 +104,43 @@ class StructuredCompleter(Protocol):
     ) -> str:
         """Return the model's structured JSON document."""
         ...
+
+
+def complete_or_repair[T](
+    completer: StructuredCompleter,
+    *,
+    instructions: str,
+    repair_instructions: str,
+    content: str,
+    repair_content: Callable[[str, JudgeError], str],
+    schema_name: str,
+    schema: Mapping[str, JsonValue],
+    label: str,
+    invalid: JudgeCode,
+    parse: Callable[[str], T],
+) -> T:
+    """Call the model once, then once more when the parsed document is invalid."""
+
+    raw = completer.complete(
+        instructions=instructions,
+        content=content,
+        schema_name=schema_name,
+        schema=schema,
+        label=label,
+    )
+    try:
+        return parse(raw)
+    except JudgeError as exc:
+        if exc.code is not invalid:
+            raise
+        repaired = completer.complete(
+            instructions=repair_instructions,
+            content=repair_content(raw, exc),
+            schema_name=schema_name,
+            schema=schema,
+            label=label,
+        )
+        return parse(repaired)
 
 
 class NodeStatus(StrEnum):
@@ -241,4 +279,5 @@ __all__ = [
     "TransitionAssessment",
     "Traversal",
     "Verdict",
+    "complete_or_repair",
 ]

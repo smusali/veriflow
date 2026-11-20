@@ -190,8 +190,7 @@ def _node_report(
 
 def _is_missing(finding: CriterionFinding) -> bool:
     return (
-        finding.applicability is Applicability.APPLICABLE
-        and finding.result is FindingResult.UNMET
+        finding.applicability is Applicability.APPLICABLE and finding.result is FindingResult.UNMET
     )
 
 
@@ -595,8 +594,7 @@ def render_report(report: EvaluationReport) -> str:
                 "node_results",
                 _object(
                     tuple(
-                        (node_id, _node(node, 2))
-                        for node_id, node in report.node_results.items()
+                        (node_id, _node(node, 2)) for node_id, node in report.node_results.items()
                     ),
                     1,
                 ),

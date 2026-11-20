@@ -18,10 +18,7 @@ for finding in evidence.findings:
         turns = ", ".join(str(index) for index in finding.evidence_turns)
     else:
         turns = "none"
-    if finding.action_turn is None:
-        action = "none"
-    else:
-        action = str(finding.action_turn)
+    action = "none" if finding.action_turn is None else str(finding.action_turn)
     print(
         f"{finding.criterion_id} [{finding.applicability}/{finding.result}] "
         f"turns={turns} action={action}"

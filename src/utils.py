@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import math
 from collections.abc import Callable, Mapping
+from enum import StrEnum
 from typing import NoReturn
 
 type JsonScalar = str | int | float | bool | None
@@ -33,11 +34,49 @@ def _as_json(value: object) -> JsonValue:
     raise json.JSONDecodeError("JSON value is not a supported type", "", 0)
 
 
+def json_object(value: JsonValue) -> object:
+    """Widen a checked JSON value for an API that accepts open objects."""
+
+    if value is None or isinstance(value, str | int | float | bool):
+        return value
+    if isinstance(value, list):
+        return [json_object(item) for item in value]
+    collected: dict[str, object] = {}
+    for key, item in value.items():
+        collected[key] = json_object(item)
+    return collected
+
+
 def decode_json(text: str) -> JsonValue:
     """Parse JSON text into a value whose shape has been checked."""
 
     loaded: object = json.loads(text, parse_constant=reject_json_constant)
     return _as_json(loaded)
+
+
+def decode_document(text: str, *, label: str, reject: Reject) -> JsonValue:
+    """Parse JSON text, or reject it with the caller's message."""
+
+    try:
+        return decode_json(text)
+    except json.JSONDecodeError as exc:
+        reject(f"{label} is not valid JSON: {exc.msg}.")
+
+
+def enum_member[E: StrEnum](
+    kind: type[E],
+    name: str,
+    location: str,
+    reject: Reject,
+    *,
+    supported: str,
+) -> E:
+    """Return the enum member named by value, or reject an unsupported name."""
+
+    try:
+        return kind(name)
+    except ValueError:
+        reject(f"{location} {name!r} is unsupported. {supported}")
 
 
 class JsonReader:
@@ -125,6 +164,12 @@ class JsonReader:
             return value
         self._reject(f"{location} must be a boolean.")
 
+    def require_int(self, value: JsonValue, location: str, *, label: str) -> int:
+        # bool is an int subclass, so it is excluded before the int check.
+        if isinstance(value, bool) or not isinstance(value, int):
+            self._reject(f"{location} must be an integer {label}.")
+        return value
+
     def read_finite_number(
         self,
         value: JsonValue,
@@ -146,6 +191,9 @@ __all__ = [
     "JsonReader",
     "JsonValue",
     "Reject",
+    "decode_document",
     "decode_json",
+    "enum_member",
+    "json_object",
     "reject_json_constant",
 ]

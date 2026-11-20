@@ -52,10 +52,7 @@ class JudgeError(Exception):
 
 
 def fail_contract(code: ErrorCode, message: str) -> NoReturn:
-    if code == ErrorCode.UNSUPPORTED_GRAPH:
-        outcome = Outcome.UNSUPPORTED
-    else:
-        outcome = Outcome.INPUT_ERROR
+    outcome = Outcome.UNSUPPORTED if code == ErrorCode.UNSUPPORTED_GRAPH else Outcome.INPUT_ERROR
     raise ContractError(outcome, code, message)
 
 

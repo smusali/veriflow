@@ -6,6 +6,7 @@ import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
+from typing import NoReturn
 
 from .errors import JudgeCode, JudgeError, fail_judge as fail
 from .inputs import Transcript
@@ -20,11 +21,14 @@ from .models import (
     StageEvent,
     StructuredCompleter,
     Subrequirement,
+    complete_or_repair,
 )
-from .prompts import EVIDENCE_INSTRUCTIONS as _EVIDENCE_INSTRUCTIONS
-from .prompts import EVIDENCE_REPAIR_INSTRUCTIONS as _EVIDENCE_REPAIR_INSTRUCTIONS
-from .prompts import FINDINGS_SCHEMA as _FINDINGS_SCHEMA
-from .utils import JsonReader, JsonValue, decode_json
+from .prompts import (
+    EVIDENCE_INSTRUCTIONS as _EVIDENCE_INSTRUCTIONS,
+    EVIDENCE_REPAIR_INSTRUCTIONS as _EVIDENCE_REPAIR_INSTRUCTIONS,
+    FINDINGS_SCHEMA as _FINDINGS_SCHEMA,
+)
+from .utils import JsonReader, JsonValue, decode_document, enum_member
 
 _FINDING_FIELDS = frozenset(
     {
@@ -40,107 +44,11 @@ _EVIDENCE_FIELDS = frozenset({"findings", "stage_events"})
 _STAGE_EVENT_FIELDS = frozenset({"node_id", "turn", "start", "anchor"})
 
 
-def _bind(code: JudgeCode) -> JsonReader:
-    return JsonReader(
-        lambda message, bound=code: fail(bound, message),
-        reject_whitespace=True,
-    )
+def _reject(message: str) -> NoReturn:
+    fail(JudgeCode.INVALID_EVIDENCE, message)
 
 
-_reader = _bind(JudgeCode.INVALID_EVIDENCE)
-
-
-def _use(code: JudgeCode) -> JsonReader:
-    if code is JudgeCode.INVALID_EVIDENCE:
-        return _reader
-    return _bind(code)
-
-
-def decode_document(
-    text: str,
-    *,
-    code: JudgeCode = JudgeCode.INVALID_EVIDENCE,
-    label: str = "Evidence",
-) -> JsonValue:
-    try:
-        return decode_json(text)
-    except json.JSONDecodeError as exc:
-        fail(code, f"{label} is not valid JSON: {exc.msg}.")
-
-
-def expect_object(
-    value: JsonValue,
-    location: str,
-    *,
-    code: JudgeCode = JudgeCode.INVALID_EVIDENCE,
-) -> dict[str, JsonValue]:
-    return _use(code).expect_object(value, location)
-
-
-def expect_exact_object(
-    value: JsonValue,
-    location: str,
-    allowed: frozenset[str],
-    *,
-    code: JudgeCode = JudgeCode.INVALID_EVIDENCE,
-) -> dict[str, JsonValue]:
-    return _use(code).expect_exact_object(value, location, allowed)
-
-
-def expect_array(
-    value: JsonValue,
-    location: str,
-    *,
-    code: JudgeCode = JudgeCode.INVALID_EVIDENCE,
-) -> tuple[JsonValue, ...]:
-    return _use(code).expect_array(value, location)
-
-
-def require_field(
-    fields: Mapping[str, JsonValue],
-    name: str,
-    location: str,
-    *,
-    code: JudgeCode = JudgeCode.INVALID_EVIDENCE,
-) -> JsonValue:
-    return _use(code).require_field(fields, name, location)
-
-
-def require_text(
-    value: JsonValue,
-    location: str,
-    *,
-    code: JudgeCode = JudgeCode.INVALID_EVIDENCE,
-) -> str:
-    return _use(code).require_text(value, location)
-
-
-def require_text_field(
-    fields: Mapping[str, JsonValue],
-    name: str,
-    location: str,
-    *,
-    code: JudgeCode = JudgeCode.INVALID_EVIDENCE,
-) -> str:
-    return _use(code).require_text_field(fields, name, location)
-
-
-def require_optional_text(
-    value: JsonValue,
-    location: str,
-    *,
-    code: JudgeCode = JudgeCode.INVALID_EVIDENCE,
-) -> str | None:
-    return _use(code).require_optional_text(value, location)
-
-
-def require_bool(
-    value: JsonValue,
-    location: str,
-    *,
-    code: JudgeCode = JudgeCode.INVALID_EVIDENCE,
-) -> bool:
-    return _use(code).require_bool(value, location)
+_reader = JsonReader(_reject, reject_whitespace=True)
 
 
 @dataclass(frozen=True, slots=True)
@@ -180,9 +88,7 @@ def _judged_obligations(rubric: Rubric) -> tuple[_JudgedObligation, ...]:
     for criterion in rubric.criteria:
         items.append(_judged(criterion, node_id=criterion.node_id, parent_id=None))
         for subrequirement in criterion.subrequirements:
-            items.append(
-                _judged(subrequirement, node_id=criterion.node_id, parent_id=criterion.id)
-            )
+            items.append(_judged(subrequirement, node_id=criterion.node_id, parent_id=criterion.id))
     return tuple(items)
 
 
@@ -193,12 +99,10 @@ def _group_scope(item: _JudgedObligation) -> str:
 
 
 def _require_offset(value: JsonValue, location: str) -> int:
-    # bool is an int subclass, so it is excluded before the int check.
-    if isinstance(value, bool) or not isinstance(value, int):
-        fail(JudgeCode.INVALID_EVIDENCE, f"{location} must be an integer offset.")
-    if value < 0:
-        fail(JudgeCode.INVALID_EVIDENCE, f"{location} {value} is negative.")
-    return value
+    number = _reader.require_int(value, location, label="offset")
+    if number < 0:
+        fail(JudgeCode.INVALID_EVIDENCE, f"{location} {number} is negative.")
+    return number
 
 
 def _read_stage_event(
@@ -209,20 +113,20 @@ def _read_stage_event(
 ) -> StageEvent:
     location = f"stage_events[{index}]"
     code = JudgeCode.INVALID_EVIDENCE
-    fields = expect_exact_object(value, location, _STAGE_EVENT_FIELDS, code=code)
-    node_id = require_text_field(fields, "node_id", location, code=code)
+    fields = _reader.expect_exact_object(value, location, _STAGE_EVENT_FIELDS)
+    node_id = _reader.require_text_field(fields, "node_id", location)
     if node_id not in node_ids:
         fail(code, f"{location}.node_id {node_id!r} is not a workflow node.")
     turn = _require_turn_index(
-        require_field(fields, "turn", location, code=code),
+        _reader.require_field(fields, "turn", location),
         f"{location}.turn",
         len(transcript.turns),
     )
     spoken = transcript.turns[turn]
     if spoken.role != "assistant":
         fail(code, f"{location}.turn {turn} is not an assistant turn.")
-    start = _require_offset(require_field(fields, "start", location, code=code), f"{location}.start")
-    anchor = require_text_field(fields, "anchor", location, code=code)
+    start = _require_offset(_reader.require_field(fields, "start", location), f"{location}.start")
+    anchor = _reader.require_text_field(fields, "anchor", location)
     excerpt = spoken.content[start : start + len(anchor)]
     if excerpt != anchor:
         fail(code, f"{location}.anchor is not in the assistant turn at start {start}.")
@@ -234,7 +138,7 @@ def _read_stage_events(
     transcript: Transcript,
     node_ids: frozenset[str],
 ) -> tuple[StageEvent, ...]:
-    items = expect_array(value, "evidence.stage_events", code=JudgeCode.INVALID_EVIDENCE)
+    items = _reader.expect_array(value, "evidence.stage_events")
     events: list[StageEvent] = []
     seen: set[tuple[str, int, int]] = set()
     for index, item in enumerate(items):
@@ -254,16 +158,14 @@ def _read_stage_events(
 
 
 def _require_turn_index(value: JsonValue, location: str, turn_count: int) -> int:
-    # bool is an int subclass, so it is excluded before the int check.
-    if isinstance(value, bool) or not isinstance(value, int):
-        fail(JudgeCode.INVALID_EVIDENCE, f"{location} must be an integer turn index.")
-    if value < 0 or value >= turn_count:
-        fail(JudgeCode.INVALID_EVIDENCE, f"{location} {value} is not a transcript turn.")
-    return value
+    number = _reader.require_int(value, location, label="turn index")
+    if number < 0 or number >= turn_count:
+        fail(JudgeCode.INVALID_EVIDENCE, f"{location} {number} is not a transcript turn.")
+    return number
 
 
 def _require_evidence_turns(value: JsonValue, location: str, turn_count: int) -> tuple[int, ...]:
-    items = expect_array(value, location, code=JudgeCode.INVALID_EVIDENCE)
+    items = _reader.expect_array(value, location)
     indexes: list[int] = []
     seen: set[int] = set()
     for index, item in enumerate(items):
@@ -277,36 +179,22 @@ def _require_evidence_turns(value: JsonValue, location: str, turn_count: int) ->
 
 
 def _applicability_from_name(name: str, location: str) -> Applicability:
-    if name == "applicable":
-        return Applicability.APPLICABLE
-    if name == "not_applicable":
-        return Applicability.NOT_APPLICABLE
-    if name == "uncertain":
-        return Applicability.UNCERTAIN
-    fail(
-        JudgeCode.INVALID_EVIDENCE,
-        (
-            f"{location} {name!r} is unsupported. "
-            "Supported values are applicable, not_applicable, and uncertain."
-        ),
+    return enum_member(
+        Applicability,
+        name,
+        location,
+        _reject,
+        supported="Supported values are applicable, not_applicable, and uncertain.",
     )
 
 
 def _result_from_name(name: str, location: str) -> FindingResult:
-    if name == "met":
-        return FindingResult.MET
-    if name == "unmet":
-        return FindingResult.UNMET
-    if name == "contradicted":
-        return FindingResult.CONTRADICTED
-    if name == "insufficient":
-        return FindingResult.INSUFFICIENT
-    fail(
-        JudgeCode.INVALID_EVIDENCE,
-        (
-            f"{location} {name!r} is unsupported. "
-            "Supported results are met, unmet, contradicted, and insufficient."
-        ),
+    return enum_member(
+        FindingResult,
+        name,
+        location,
+        _reject,
+        supported="Supported results are met, unmet, contradicted, and insufficient.",
     )
 
 
@@ -358,8 +246,13 @@ def _require_applicability_shape(finding: CriterionFinding, location: str) -> No
                 f"{location} is not applicable, so result must be unmet and no turns can be cited.",
             )
         return
-    if finding.applicability is Applicability.UNCERTAIN and finding.result is not FindingResult.INSUFFICIENT:
-        fail(JudgeCode.INVALID_EVIDENCE, f"{location} is uncertain, so result must be insufficient.")
+    if (
+        finding.applicability is Applicability.UNCERTAIN
+        and finding.result is not FindingResult.INSUFFICIENT
+    ):
+        fail(
+            JudgeCode.INVALID_EVIDENCE, f"{location} is uncertain, so result must be insufficient."
+        )
 
 
 def _require_required_applicable(
@@ -370,7 +263,10 @@ def _require_required_applicable(
     if obligation.requirement_type is not RequirementType.REQUIRED:
         return
     if finding.applicability is not Applicability.APPLICABLE:
-        fail(JudgeCode.INVALID_EVIDENCE, f"{location} is required, so applicability must be applicable.")
+        fail(
+            JudgeCode.INVALID_EVIDENCE,
+            f"{location} is required, so applicability must be applicable.",
+        )
 
 
 def _require_alternative_findings(
@@ -379,7 +275,10 @@ def _require_alternative_findings(
 ) -> None:
     grouped: dict[tuple[str, str], list[_JudgedObligation]] = {}
     for item in obligations:
-        if item.requirement_type is not RequirementType.ALTERNATIVE or item.alternative_group is None:
+        if (
+            item.requirement_type is not RequirementType.ALTERNATIVE
+            or item.alternative_group is None
+        ):
             continue
         grouped.setdefault((_group_scope(item), item.alternative_group), []).append(item)
     for (scope, group), members in grouped.items():
@@ -428,7 +327,10 @@ def _require_parent_support(findings: Mapping[str, CriterionFinding], rubric: Ru
                     JudgeCode.INVALID_EVIDENCE,
                     f"{criterion.id} is met, but required {subrequirement.id} is {child.result}.",
                 )
-            if child.result is FindingResult.CONTRADICTED or child.result is FindingResult.INSUFFICIENT:
+            if (
+                child.result is FindingResult.CONTRADICTED
+                or child.result is FindingResult.INSUFFICIENT
+            ):
                 fail(
                     JudgeCode.INVALID_EVIDENCE,
                     f"{criterion.id} is met, but {subrequirement.id} is {child.result}.",
@@ -437,35 +339,34 @@ def _require_parent_support(findings: Mapping[str, CriterionFinding], rubric: Ru
 
 def _read_finding(value: JsonValue, index: int, turn_count: int) -> CriterionFinding:
     location = f"findings[{index}]"
-    code = JudgeCode.INVALID_EVIDENCE
-    fields = expect_exact_object(value, location, _FINDING_FIELDS, code=code)
+    fields = _reader.expect_exact_object(value, location, _FINDING_FIELDS)
     evidence_turns = _require_evidence_turns(
-        require_field(fields, "evidence_turns", location, code=code),
+        _reader.require_field(fields, "evidence_turns", location),
         f"{location}.evidence_turns",
         turn_count,
     )
-    action_value = require_field(fields, "action_turn", location, code=code)
+    action_value = _reader.require_field(fields, "action_turn", location)
     if action_value is None:
         action_turn = None
     else:
         action_turn = _require_turn_index(action_value, f"{location}.action_turn", turn_count)
     _require_action_membership(action_turn, evidence_turns, location)
     result = _result_from_name(
-        require_text_field(fields, "result", location, code=code),
+        _reader.require_text_field(fields, "result", location),
         f"{location}.result",
     )
     _require_result_shape(result, evidence_turns, action_turn, location, turn_count)
     applicability = _applicability_from_name(
-        require_text_field(fields, "applicability", location, code=code),
+        _reader.require_text_field(fields, "applicability", location),
         f"{location}.applicability",
     )
     finding = CriterionFinding(
-        criterion_id=require_text_field(fields, "criterion_id", location, code=code),
+        criterion_id=_reader.require_text_field(fields, "criterion_id", location),
         applicability=applicability,
         result=result,
         evidence_turns=evidence_turns,
         action_turn=action_turn,
-        reason=require_text_field(fields, "reason", location, code=code),
+        reason=_reader.require_text_field(fields, "reason", location),
     )
     _require_applicability_shape(finding, location)
     return finding
@@ -488,11 +389,10 @@ def parse_evidence(document: JsonValue, transcript: Transcript, rubric: Rubric) 
     """Validate decoded findings and ground them in the transcript and rubric."""
 
     code = JudgeCode.INVALID_EVIDENCE
-    fields = expect_exact_object(document, "evidence", _EVIDENCE_FIELDS, code=code)
-    items = expect_array(
-        require_field(fields, "findings", "evidence", code=code),
+    fields = _reader.expect_exact_object(document, "evidence", _EVIDENCE_FIELDS)
+    items = _reader.expect_array(
+        _reader.require_field(fields, "findings", "evidence"),
         "evidence.findings",
-        code=code,
     )
     obligations = _judged_obligations(rubric)
     known = {item.id: item for item in obligations}
@@ -517,7 +417,7 @@ def parse_evidence(document: JsonValue, transcript: Transcript, rubric: Rubric) 
     _require_alternative_findings(found, obligations)
     _require_parent_support(found, rubric)
     stage_events = _read_stage_events(
-        require_field(fields, "stage_events", "evidence", code=code),
+        _reader.require_field(fields, "stage_events", "evidence"),
         transcript,
         frozenset(rubric.by_node),
     )
@@ -574,24 +474,28 @@ def _evidence_without_turns(rubric: Rubric) -> Evidence:
 
 
 def _evidence_payload(transcript: Transcript, rubric: Rubric) -> dict[str, JsonValue]:
-    turns: list[dict[str, JsonValue]] = []
+    turns: list[JsonValue] = []
     for turn in transcript.turns:
-        turns.append({"index": turn.index, "role": turn.role, "content": turn.content})
-    obligations: list[dict[str, JsonValue]] = []
+        spoken: dict[str, JsonValue] = {
+            "index": turn.index,
+            "role": turn.role,
+            "content": turn.content,
+        }
+        turns.append(spoken)
+    obligations: list[JsonValue] = []
     for item in _judged_obligations(rubric):
-        obligations.append(
-            {
-                "id": item.id,
-                "node_id": item.node_id,
-                "parent_id": item.parent_id,
-                "requirement_type": item.requirement_type.value,
-                "condition": item.condition,
-                "alternative_group": item.alternative_group,
-                "exact_wording": item.exact_wording,
-                "description": item.description,
-                "expected_behavior": item.expected_behavior,
-            }
-        )
+        obligation: dict[str, JsonValue] = {
+            "id": item.id,
+            "node_id": item.node_id,
+            "parent_id": item.parent_id,
+            "requirement_type": item.requirement_type.value,
+            "condition": item.condition,
+            "alternative_group": item.alternative_group,
+            "exact_wording": item.exact_wording,
+            "description": item.description,
+            "expected_behavior": item.expected_behavior,
+        }
+        obligations.append(obligation)
     return {"turns": turns, "obligations": obligations}
 
 
@@ -609,41 +513,32 @@ def extract_evidence(
     if not transcript.turns:
         return _evidence_without_turns(rubric)
     payload = _evidence_payload(transcript, rubric)
-    raw = completer.complete(
-        instructions=_EVIDENCE_INSTRUCTIONS,
-        content=json.dumps(payload, ensure_ascii=False),
-        schema_name="criterion_findings",
-        schema=_FINDINGS_SCHEMA,
-        label="Evidence judgment",
-    )
-    try:
-        return parse_evidence(
-            decode_document(raw, code=JudgeCode.INVALID_EVIDENCE, label="Evidence"),
-            transcript,
-            rubric,
-        )
-    except JudgeError as exc:
-        if exc.code is not JudgeCode.INVALID_EVIDENCE:
-            raise
+
+    def repair_content(raw: str, exc: JudgeError) -> str:
         repair_payload: dict[str, JsonValue] = {
             "turns": payload["turns"],
             "obligations": payload["obligations"],
             "rejected_findings": raw,
             "validation_error": str(exc),
         }
-        repaired = completer.complete(
-            instructions=_EVIDENCE_REPAIR_INSTRUCTIONS,
-            content=json.dumps(repair_payload, ensure_ascii=False),
-            schema_name="criterion_findings",
-            schema=_FINDINGS_SCHEMA,
-            label="Evidence judgment",
-        )
-        return parse_evidence(
-            decode_document(repaired, code=JudgeCode.INVALID_EVIDENCE, label="Evidence"),
+        return json.dumps(repair_payload, ensure_ascii=False)
+
+    return complete_or_repair(
+        completer,
+        instructions=_EVIDENCE_INSTRUCTIONS,
+        repair_instructions=_EVIDENCE_REPAIR_INSTRUCTIONS,
+        content=json.dumps(payload, ensure_ascii=False),
+        repair_content=repair_content,
+        schema_name="criterion_findings",
+        schema=_FINDINGS_SCHEMA,
+        label="Evidence judgment",
+        invalid=JudgeCode.INVALID_EVIDENCE,
+        parse=lambda raw: parse_evidence(
+            decode_document(raw, label="Evidence", reject=_reject),
             transcript,
             rubric,
-        )
-
+        ),
+    )
 
 
 __all__ = [

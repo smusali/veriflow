@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from types import MappingProxyType
 
 from .errors import JudgeCode, fail_judge as fail
-from .inputs import Transcript, Workflow
+from .inputs import Transcript, Workflow, build_incoming
 from .models import (
     Applicability,
     AttemptState,
@@ -25,6 +25,7 @@ from .models import (
     StageEvent,
     Subrequirement,
 )
+
 
 @dataclass(frozen=True, slots=True)
 class _Scope:
@@ -45,10 +46,7 @@ def _require_finding(evidence: Evidence, criterion_id: str) -> CriterionFinding:
 
 
 def _is_met(finding: CriterionFinding) -> bool:
-    return (
-        finding.applicability is Applicability.APPLICABLE
-        and finding.result is FindingResult.MET
-    )
+    return finding.applicability is Applicability.APPLICABLE and finding.result is FindingResult.MET
 
 
 def _child_clear(finding: CriterionFinding) -> bool:
@@ -197,10 +195,7 @@ def _assess(criterion: Criterion, evidence: Evidence) -> CriterionAssessment:
     )
     established = _is_met(parent) or any(_is_met(finding) for finding in child_findings)
     unresolved = in_denominator and any(_is_unresolved_finding(finding) for finding in findings)
-    if in_denominator or violated:
-        applicability = Applicability.APPLICABLE
-    else:
-        applicability = parent.applicability
+    applicability = Applicability.APPLICABLE if in_denominator or violated else parent.applicability
     return CriterionAssessment(
         criterion_id=criterion.id,
         applicability=applicability,
@@ -235,15 +230,6 @@ def _require_coverage(workflow: Workflow, rubric: Rubric) -> None:
             JudgeCode.INVALID_EVIDENCE,
             f"Every workflow node needs a criterion. Missing: {', '.join(missing)}.",
         )
-
-
-def _predecessors(workflow: Workflow) -> Mapping[str, tuple[str, ...]]:
-    buckets: dict[str, list[str]] = {node.id: [] for node in workflow.nodes}
-    for edge in workflow.edges:
-        sources = buckets[edge.target]
-        if edge.source not in sources:
-            sources.append(edge.source)
-    return MappingProxyType({node_id: tuple(sources) for node_id, sources in buckets.items()})
 
 
 def descendants(outgoing: Mapping[str, tuple[str, ...]], node_id: str) -> frozenset[str]:
@@ -288,16 +274,14 @@ def _scope(
     transcript: Transcript,
 ) -> _Scope:
     last_user, assistant_turns = _turn_facts(transcript)
-    descendants = {
+    descendants_by_node = {
         node.id: descendants(workflow.outgoing, node.id) for node in workflow.nodes
     }
     return _Scope(
-        predecessors=_predecessors(workflow),
-        descendants=MappingProxyType(descendants),
+        predecessors=build_incoming(workflow),
+        descendants=MappingProxyType(descendants_by_node),
         satisfied_nodes=frozenset(
-            node_id
-            for node_id, items in grouped.items()
-            if any(item.satisfied for item in items)
+            node_id for node_id, items in grouped.items() if any(item.satisfied for item in items)
         ),
         complete_nodes=frozenset(
             node_id for node_id, items in grouped.items() if _criteria_complete(items)
@@ -519,7 +503,7 @@ def _entered_before(
 def reachable_events(workflow: Workflow, events: tuple[StageEvent, ...]) -> tuple[StageEvent, ...]:
     """Keep stage entries that occur after a predecessor stage has been entered."""
 
-    predecessors = _predecessors(workflow)
+    predecessors = build_incoming(workflow)
     kept: list[StageEvent] = []
     for event in sorted(events, key=lambda item: (item.turn, item.start, item.node_id)):
         sources = predecessors.get(event.node_id)
@@ -575,7 +559,7 @@ def _ground_findings(workflow: Workflow, rubric: Rubric, evidence: Evidence) -> 
     conditional = _conditional_nodes(rubric)
     if not conditional:
         return evidence
-    predecessors = _predecessors(workflow)
+    predecessors = build_incoming(workflow)
     events = reachable_events(workflow, evidence.stage_events)
     findings: list[CriterionFinding] = []
     changed = False

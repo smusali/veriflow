@@ -15,9 +15,7 @@ def _nullable_string_field(description: str) -> dict[str, JsonValue]:
 
 def _shared_fields() -> dict[str, JsonValue]:
     return {
-        "id": _string_field(
-            "Identifier formed as the node id, a dot, and a lowercase slug."
-        ),
+        "id": _string_field("Identifier formed as the node id, a dot, and a lowercase slug."),
         "description": _string_field("The obligation in the node's own terms."),
         "requirement_type": {
             "type": "string",
@@ -150,11 +148,8 @@ The aggregate's subrequirements: account number is required; service address is 
 
 def rubric_instructions(binding: str, *, repair: bool) -> str:
     text = (
-        _RUBRIC_INSTRUCTIONS
-        + "\nBinding shapes follow. They are computed from the descriptions. "
-        "Follow them exactly. A shape is not an extra obligation.\n"
-        + binding
-        + "\n"
+        _RUBRIC_INSTRUCTIONS + "\nBinding shapes follow. They are computed from the descriptions. "
+        "Follow them exactly. A shape is not an extra obligation.\n" + binding + "\n"
     )
     if repair:
         text += (
@@ -229,9 +224,7 @@ def _findings_schema() -> dict[str, JsonValue]:
                         },
                         "start": {
                             "type": "integer",
-                            "description": (
-                                "Zero-based index of anchor in that turn's content."
-                            ),
+                            "description": ("Zero-based index of anchor in that turn's content."),
                         },
                         "anchor": _string_field(
                             "Contiguous slice of that assistant turn. "

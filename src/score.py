@@ -127,9 +127,7 @@ def _has_unreached_expected(evaluation: NodeEvaluation, traversal: Traversal) ->
     expected = traversal.expected_path
     if expected is None:
         return False
-    return any(
-        evaluation.by_id[node_id].status is NodeStatus.NOT_REACHED for node_id in expected
-    )
+    return any(evaluation.by_id[node_id].status is NodeStatus.NOT_REACHED for node_id in expected)
 
 
 def _verdict(evaluation: NodeEvaluation, traversal: Traversal) -> Verdict:
@@ -167,5 +165,6 @@ def score_adherence(evaluation: NodeEvaluation, traversal: Traversal) -> Adheren
         adherence_score=adherence_score,
         verdict=_verdict(evaluation, traversal),
     )
+
 
 __all__ = ["score_adherence"]

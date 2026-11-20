@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from collections import deque
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
@@ -97,32 +97,6 @@ def read_json_document(path: Path, label: str) -> JsonValue:
         )
 
 
-def expect_object(value: JsonValue, location: str) -> dict[str, JsonValue]:
-    return _reader.expect_object(value, location)
-
-
-def expect_array(value: JsonValue, location: str) -> tuple[JsonValue, ...]:
-    return _reader.expect_array(value, location)
-
-
-def require_field(fields: Mapping[str, JsonValue], name: str, location: str) -> JsonValue:
-    return _reader.require_field(fields, name, location)
-
-
-def require_text(value: JsonValue, location: str, *, allow_empty: bool) -> str:
-    return _reader.require_text(value, location, allow_empty=allow_empty)
-
-
-def require_text_field(
-    fields: Mapping[str, JsonValue],
-    name: str,
-    location: str,
-    *,
-    allow_empty: bool,
-) -> str:
-    return _reader.require_text_field(fields, name, location, allow_empty=allow_empty)
-
-
 def read_finite_number(value: JsonValue, location: str, code: ErrorCode) -> int | float:
     def reject(message: str) -> NoReturn:
         fail(code, message)
@@ -169,15 +143,15 @@ def node_type_from_name(type_name: str, location: str) -> NodeType:
 
 
 def read_position(value: JsonValue, location: str) -> Position:
-    fields = expect_object(value, location)
+    fields = _reader.expect_object(value, location)
     return Position(
         x=read_finite_number(
-            require_field(fields, "x", location),
+            _reader.require_field(fields, "x", location),
             f"{location}.x",
             ErrorCode.MISSING_REQUIRED_FIELD,
         ),
         y=read_finite_number(
-            require_field(fields, "y", location),
+            _reader.require_field(fields, "y", location),
             f"{location}.y",
             ErrorCode.MISSING_REQUIRED_FIELD,
         ),
@@ -186,18 +160,20 @@ def read_position(value: JsonValue, location: str) -> Position:
 
 def read_node_parts(value: JsonValue, index: int) -> _NodeParts:
     location = f"nodes[{index}]"
-    fields = expect_object(value, location)
+    fields = _reader.expect_object(value, location)
     data_location = f"{location}.data"
-    data_fields = expect_object(require_field(fields, "data", location), data_location)
+    data_fields = _reader.expect_object(
+        _reader.require_field(fields, "data", location), data_location
+    )
     position = None
     if "position" in fields:
         position = read_position(fields["position"], f"{location}.position")
     return _NodeParts(
-        id=require_text_field(fields, "id", location, allow_empty=False),
-        type_name=require_text_field(fields, "type", location, allow_empty=True),
+        id=_reader.require_text_field(fields, "id", location, allow_empty=False),
+        type_name=_reader.require_text_field(fields, "type", location, allow_empty=True),
         data=NodeData(
-            label=require_text_field(data_fields, "label", data_location, allow_empty=True),
-            description=require_text_field(
+            label=_reader.require_text_field(data_fields, "label", data_location, allow_empty=True),
+            description=_reader.require_text_field(
                 data_fields,
                 "description",
                 data_location,
@@ -219,11 +195,11 @@ def finish_node(parts: _NodeParts, index: int) -> WorkflowNode:
 
 def read_edge(value: JsonValue, index: int) -> WorkflowEdge:
     location = f"edges[{index}]"
-    fields = expect_object(value, location)
+    fields = _reader.expect_object(value, location)
     return WorkflowEdge(
-        id=require_text_field(fields, "id", location, allow_empty=False),
-        source=require_text_field(fields, "source", location, allow_empty=False),
-        target=require_text_field(fields, "target", location, allow_empty=False),
+        id=_reader.require_text_field(fields, "id", location, allow_empty=False),
+        source=_reader.require_text_field(fields, "source", location, allow_empty=False),
+        target=_reader.require_text_field(fields, "target", location, allow_empty=False),
     )
 
 
@@ -263,16 +239,35 @@ def require_single_start(nodes: tuple[WorkflowNode, ...]) -> str:
     )
 
 
+def _index_edges(
+    node_ids: Iterable[str],
+    pairs: Iterable[tuple[str, str]],
+) -> dict[str, tuple[str, ...]]:
+    buckets: dict[str, list[str]] = {node_id: [] for node_id in node_ids}
+    for source, target in pairs:
+        chosen = buckets[source]
+        if target not in chosen:
+            chosen.append(target)
+    return {source: tuple(targets) for source, targets in buckets.items()}
+
+
 def build_outgoing(
     nodes: tuple[WorkflowNode, ...],
     edges: tuple[WorkflowEdge, ...],
 ) -> dict[str, tuple[str, ...]]:
-    buckets: dict[str, list[str]] = {node.id: [] for node in nodes}
-    for edge in edges:
-        targets = buckets[edge.source]
-        if edge.target not in targets:
-            targets.append(edge.target)
-    return {source: tuple(targets) for source, targets in buckets.items()}
+    return _index_edges(
+        (node.id for node in nodes),
+        ((edge.source, edge.target) for edge in edges),
+    )
+
+
+def build_incoming(workflow: Workflow) -> Mapping[str, tuple[str, ...]]:
+    return MappingProxyType(
+        _index_edges(
+            (node.id for node in workflow.nodes),
+            ((edge.target, edge.source) for edge in workflow.edges),
+        )
+    )
 
 
 def require_acyclic(outgoing: Mapping[str, tuple[str, ...]]) -> None:
@@ -319,9 +314,13 @@ def require_reachable_end(
 def parse_workflow(document: JsonValue) -> Workflow:
     """Validate a decoded workflow object and return its typed graph."""
 
-    root = expect_object(document, "workflow")
-    node_items = expect_array(require_field(root, "nodes", "workflow"), "workflow.nodes")
-    edge_items = expect_array(require_field(root, "edges", "workflow"), "workflow.edges")
+    root = _reader.expect_object(document, "workflow")
+    node_items = _reader.expect_array(
+        _reader.require_field(root, "nodes", "workflow"), "workflow.nodes"
+    )
+    edge_items = _reader.expect_array(
+        _reader.require_field(root, "edges", "workflow"), "workflow.edges"
+    )
     parts = tuple(read_node_parts(item, index) for index, item in enumerate(node_items))
     edges = tuple(read_edge(item, index) for index, item in enumerate(edge_items))
     nodes = tuple(finish_node(part, index) for index, part in enumerate(parts))
@@ -342,11 +341,11 @@ def parse_workflow(document: JsonValue) -> Workflow:
 
 def read_turn(value: JsonValue, index: int) -> TranscriptTurn:
     location = f"turns[{index}]"
-    fields = expect_object(value, location)
-    role_value = require_field(fields, "role", location)
-    content = require_text_field(fields, "content", location, allow_empty=True)
-    beginning_value = require_field(fields, "beginning", location)
-    end_value = require_field(fields, "end", location)
+    fields = _reader.expect_object(value, location)
+    role_value = _reader.require_field(fields, "role", location)
+    content = _reader.require_text_field(fields, "content", location, allow_empty=True)
+    beginning_value = _reader.require_field(fields, "beginning", location)
+    end_value = _reader.require_field(fields, "end", location)
     role = require_role(role_value, f"{location}.role")
     beginning = require_timestamp(beginning_value, f"{location}.beginning")
     end = require_timestamp(end_value, f"{location}.end")
@@ -367,7 +366,7 @@ def read_turn(value: JsonValue, index: int) -> TranscriptTurn:
 def parse_transcript(document: JsonValue) -> Transcript:
     """Validate a decoded transcript array and keep its original order."""
 
-    items = expect_array(document, "transcript")
+    items = _reader.expect_array(document, "transcript")
     turns: list[TranscriptTurn] = []
     previous_beginning: int | float | None = None
     for index, item in enumerate(items):

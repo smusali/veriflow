@@ -7,13 +7,20 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
+from typing import NoReturn
 
 from .errors import JudgeCode, JudgeError, fail_judge as fail
 from .inputs import Workflow
-from .models import Criterion, RequirementType, Rubric, StructuredCompleter, Subrequirement
-from .prompts import RUBRIC_SCHEMA as _RUBRIC_SCHEMA
-from .prompts import rubric_instructions
-from .utils import JsonReader, JsonValue, decode_json
+from .models import (
+    Criterion,
+    RequirementType,
+    Rubric,
+    StructuredCompleter,
+    Subrequirement,
+    complete_or_repair,
+)
+from .prompts import RUBRIC_SCHEMA as _RUBRIC_SCHEMA, rubric_instructions
+from .utils import JsonReader, JsonValue, decode_document, enum_member
 
 _SLUG = re.compile(r"[a-z][a-z0-9_]*\Z")
 _EXACT_DEMAND = re.compile(
@@ -56,82 +63,20 @@ class _Obligation:
     alternative: tuple[str, str] | None
 
 
-
-_reader = JsonReader(
-    lambda message: fail(JudgeCode.INVALID_RUBRIC, message),
-    reject_whitespace=True,
-)
+def _reject(message: str) -> NoReturn:
+    fail(JudgeCode.INVALID_RUBRIC, message)
 
 
-def decode_document(
-    text: str,
-    *,
-    code: JudgeCode = JudgeCode.INVALID_RUBRIC,
-    label: str = "Rubric",
-) -> JsonValue:
-    try:
-        return decode_json(text)
-    except json.JSONDecodeError as exc:
-        fail(code, f"{label} is not valid JSON: {exc.msg}.")
-
-
-def expect_object(value: JsonValue, location: str) -> dict[str, JsonValue]:
-    return _reader.expect_object(value, location)
-
-
-def expect_exact_object(
-    value: JsonValue,
-    location: str,
-    allowed: frozenset[str],
-) -> dict[str, JsonValue]:
-    return _reader.expect_exact_object(value, location, allowed)
-
-
-def expect_array(value: JsonValue, location: str) -> tuple[JsonValue, ...]:
-    return _reader.expect_array(value, location)
-
-
-def require_field(
-    fields: Mapping[str, JsonValue],
-    name: str,
-    location: str,
-) -> JsonValue:
-    return _reader.require_field(fields, name, location)
-
-
-def require_text(value: JsonValue, location: str) -> str:
-    return _reader.require_text(value, location)
-
-
-def require_text_field(
-    fields: Mapping[str, JsonValue],
-    name: str,
-    location: str,
-) -> str:
-    return _reader.require_text_field(fields, name, location)
-
-
-def require_optional_text(value: JsonValue, location: str) -> str | None:
-    return _reader.require_optional_text(value, location)
-
-
-def require_bool(value: JsonValue, location: str) -> bool:
-    return _reader.require_bool(value, location)
+_reader = JsonReader(_reject, reject_whitespace=True)
 
 
 def requirement_type_from_name(name: str, location: str) -> RequirementType:
-    if name == "required":
-        return RequirementType.REQUIRED
-    if name == "conditional":
-        return RequirementType.CONDITIONAL
-    if name == "alternative":
-        return RequirementType.ALTERNATIVE
-    fail(
-        JudgeCode.INVALID_RUBRIC,
-        (
-            f"{location} {name!r} is unsupported. "
-            "Supported types are required, conditional, and alternative."
-        ),
+    return enum_member(
+        RequirementType,
+        name,
+        location,
+        _reject,
+        supported="Supported types are required, conditional, and alternative.",
     )
 
 
@@ -241,34 +186,34 @@ def read_obligation(
     node_description: str,
 ) -> _Obligation:
     requirement_type = requirement_type_from_name(
-        require_text_field(fields, "requirement_type", location),
+        _reader.require_text_field(fields, "requirement_type", location),
         f"{location}.requirement_type",
     )
-    condition = require_optional_text(
-        require_field(fields, "condition", location),
+    condition = _reader.require_optional_text(
+        _reader.require_field(fields, "condition", location),
         f"{location}.condition",
     )
-    alternative_group = require_optional_text(
-        require_field(fields, "alternative_group", location),
+    alternative_group = _reader.require_optional_text(
+        _reader.require_field(fields, "alternative_group", location),
         f"{location}.alternative_group",
     )
-    item_id = require_text_field(fields, "id", location)
+    item_id = _reader.require_text_field(fields, "id", location)
     require_identifier(item_id, node_id, location)
-    source_text = require_text_field(fields, "source_text", location)
+    source_text = _reader.require_text_field(fields, "source_text", location)
     require_excerpt(source_text, node_description, location)
-    exact_wording = require_bool(
-        require_field(fields, "exact_wording", location),
+    exact_wording = _reader.require_bool(
+        _reader.require_field(fields, "exact_wording", location),
         f"{location}.exact_wording",
     )
     require_wording_flag(exact_wording, node_description, location)
     return _Obligation(
         id=item_id,
-        description=require_text_field(fields, "description", location),
+        description=_reader.require_text_field(fields, "description", location),
         requirement_type=requirement_type,
         condition=condition,
         alternative_group=alternative_group,
         exact_wording=exact_wording,
-        expected_behavior=require_text_field(fields, "expected_behavior", location),
+        expected_behavior=_reader.require_text_field(fields, "expected_behavior", location),
         source_text=source_text,
         alternative=checked_requirement(
             requirement_type,
@@ -295,7 +240,7 @@ def read_subrequirement(
     criterion_id: str,
 ) -> tuple[Subrequirement, _AlternativeMember | None]:
     location = f"{parent}.subrequirements[{index}]"
-    fields = expect_exact_object(value, location, _SUBREQUIREMENT_FIELDS)
+    fields = _reader.expect_exact_object(value, location, _SUBREQUIREMENT_FIELDS)
     obligation = read_obligation(fields, location, node_id, node_description)
     return (
         Subrequirement(
@@ -318,8 +263,8 @@ def read_criterion(
     workflow: Workflow,
 ) -> tuple[Criterion, tuple[_AlternativeMember, ...]]:
     location = f"criteria[{index}]"
-    fields = expect_exact_object(value, location, _CRITERION_FIELDS)
-    node_id = require_text_field(fields, "node_id", location)
+    fields = _reader.expect_exact_object(value, location, _CRITERION_FIELDS)
+    node_id = _reader.require_text_field(fields, "node_id", location)
     node = workflow.node_by_id.get(node_id)
     if node is None:
         fail(
@@ -327,8 +272,8 @@ def read_criterion(
             f"{location}.node_id {node_id!r} is not in the workflow.",
         )
     obligation = read_obligation(fields, location, node_id, node.data.description)
-    raw_subrequirements = expect_array(
-        require_field(fields, "subrequirements", location),
+    raw_subrequirements = _reader.expect_array(
+        _reader.require_field(fields, "subrequirements", location),
         f"{location}.subrequirements",
     )
     subrequirements: list[Subrequirement] = []
@@ -523,7 +468,9 @@ def _source_inside(source: str, container: str) -> bool:
     return normalize_text(source) in normalize_text(container)
 
 
-def node_split_problems(node_id: str, description: str, criteria: tuple[Criterion, ...]) -> list[str]:
+def node_split_problems(
+    node_id: str, description: str, criteria: tuple[Criterion, ...]
+) -> list[str]:
     problems: list[str] = []
     minimum = _minimum_criteria(description)
     if len(criteria) < minimum:
@@ -680,8 +627,7 @@ def _shape_lines(node_id: str, description: str) -> list[str]:
                     )
                 else:
                     lines.append(
-                        "On that same aggregate, add one conditional subrequirement for "
-                        f"{shown}."
+                        f"On that same aggregate, add one conditional subrequirement for {shown}."
                     )
             lines.append("Do not put later actions inside the aggregate.")
         for sentence in _sentences(_counted_text(description)):
@@ -703,9 +649,7 @@ def _shape_lines(node_id: str, description: str) -> list[str]:
                     f"subrequirements: {sentence}"
                 )
     if cases:
-        lines.append(
-            "Leave subrequirements empty on every criterion except that one aggregate."
-        )
+        lines.append("Leave subrequirements empty on every criterion except that one aggregate.")
     else:
         lines.append("Leave every subrequirements array empty.")
     lines.append(
@@ -717,9 +661,7 @@ def _shape_lines(node_id: str, description: str) -> list[str]:
 def binding_shapes(workflow: Workflow) -> str:
     """State the criterion split the description checker requires."""
 
-    blocks = [
-        " ".join(_shape_lines(node.id, node.data.description)) for node in workflow.nodes
-    ]
+    blocks = [" ".join(_shape_lines(node.id, node.data.description)) for node in workflow.nodes]
     return "\n".join(blocks)
 
 
@@ -768,8 +710,10 @@ def require_granularity(criteria: tuple[Criterion, ...], workflow: Workflow) -> 
 def parse_rubric(document: JsonValue, workflow: Workflow) -> Rubric:
     """Validate a decoded rubric and ground it in the workflow descriptions."""
 
-    fields = expect_exact_object(document, "rubric", _RUBRIC_FIELDS)
-    items = expect_array(require_field(fields, "criteria", "rubric"), "rubric.criteria")
+    fields = _reader.expect_exact_object(document, "rubric", _RUBRIC_FIELDS)
+    items = _reader.expect_array(
+        _reader.require_field(fields, "criteria", "rubric"), "rubric.criteria"
+    )
     criteria: list[Criterion] = []
     members: list[_AlternativeMember] = []
     seen: dict[str, str] = {}
@@ -792,15 +736,14 @@ def parse_rubric(document: JsonValue, workflow: Workflow) -> Rubric:
 def workflow_payload(workflow: Workflow) -> dict[str, JsonValue]:
     """Describe each node by id, label, and description."""
 
-    nodes: list[dict[str, str]] = []
+    nodes: list[JsonValue] = []
     for node in workflow.nodes:
-        nodes.append(
-            {
-                "id": node.id,
-                "label": node.data.label,
-                "description": node.data.description,
-            }
-        )
+        item: dict[str, JsonValue] = {
+            "id": node.id,
+            "label": node.data.label,
+            "description": node.data.description,
+        }
+        nodes.append(item)
     return {"nodes": nodes}
 
 
@@ -811,31 +754,32 @@ def build_rubric(workflow: Workflow, completer: StructuredCompleter) -> Rubric:
     """
 
     payload = workflow_payload(workflow)
-    raw = completer.complete(
-        instructions=rubric_instructions(binding_shapes(workflow), repair=False),
-        content=json.dumps(payload, ensure_ascii=False),
-        schema_name="workflow_rubric",
-        schema=_RUBRIC_SCHEMA,
-        label="Rubric generation",
-    )
-    try:
-        return parse_rubric(decode_document(raw), workflow)
-    except JudgeError as exc:
-        if exc.code is not JudgeCode.INVALID_RUBRIC:
-            raise
+    shapes = binding_shapes(workflow)
+    nodes = payload["nodes"]
+
+    def repair_content(raw: str, exc: JudgeError) -> str:
         repair_payload: dict[str, JsonValue] = {
-            "nodes": payload["nodes"],
+            "nodes": nodes,
             "rejected_rubric": raw,
             "validation_errors": [line for line in str(exc).splitlines() if line.strip()],
         }
-        repaired = completer.complete(
-            instructions=rubric_instructions(binding_shapes(workflow), repair=True),
-            content=json.dumps(repair_payload, ensure_ascii=False),
-            schema_name="workflow_rubric",
-            schema=_RUBRIC_SCHEMA,
-            label="Rubric generation",
-        )
-        return parse_rubric(decode_document(repaired), workflow)
+        return json.dumps(repair_payload, ensure_ascii=False)
+
+    return complete_or_repair(
+        completer,
+        instructions=rubric_instructions(shapes, repair=False),
+        repair_instructions=rubric_instructions(shapes, repair=True),
+        content=json.dumps(payload, ensure_ascii=False),
+        repair_content=repair_content,
+        schema_name="workflow_rubric",
+        schema=_RUBRIC_SCHEMA,
+        label="Rubric generation",
+        invalid=JudgeCode.INVALID_RUBRIC,
+        parse=lambda raw: parse_rubric(
+            decode_document(raw, label="Rubric", reject=_reject),
+            workflow,
+        ),
+    )
 
 
 __all__ = [

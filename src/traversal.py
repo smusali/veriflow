@@ -138,7 +138,7 @@ def _fold_events(
 ) -> _Fold:
     ordered, tied = _ordered_events(events)
     end_ids = frozenset(node.id for node in workflow.nodes if node.type == "end")
-    descendants = {
+    descendants_by_node = {
         node.id: descendants(workflow.outgoing, node.id) for node in workflow.nodes
     }
     path: list[str] = []
@@ -156,7 +156,7 @@ def _fold_events(
         if node_id == current:
             continue
         # A return to an open ancestor, before any end node, continues that stage.
-        if node_id in path and not end_seen and current in descendants[node_id]:
+        if node_id in path and not end_seen and current in descendants_by_node[node_id]:
             continue
         transitions.append(
             ObservedTransition(

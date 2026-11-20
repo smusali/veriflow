@@ -5,18 +5,21 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from openai import OpenAI, OpenAIError
 from openai.types.responses import (
     Response,
+    ResponseFormatTextJSONSchemaConfigParam,
     ResponseOutputMessage,
     ResponseOutputRefusal,
     ResponseOutputText,
+    ResponseTextConfigParam,
 )
+
+from openai import OpenAI, OpenAIError
 
 from .config import load_settings
 from .errors import JudgeCode, JudgeError, fail_judge as fail
 from .models import StructuredCompleter
-from .utils import JsonValue
+from .utils import JsonValue, json_object
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,6 +37,13 @@ class _OpenAICompleter:
         schema: Mapping[str, JsonValue],
         label: str,
     ) -> str:
+        schema_format: ResponseFormatTextJSONSchemaConfigParam = {
+            "type": "json_schema",
+            "name": schema_name,
+            "strict": True,
+            "schema": {key: json_object(value) for key, value in schema.items()},
+        }
+        text: ResponseTextConfigParam = {"format": schema_format}
         try:
             response = self.client.responses.create(
                 model=self.model,
@@ -41,14 +51,7 @@ class _OpenAICompleter:
                 instructions=instructions,
                 input=content,
                 stream=False,
-                text={
-                    "format": {
-                        "type": "json_schema",
-                        "name": schema_name,
-                        "strict": True,
-                        "schema": schema,
-                    }
-                },
+                text=text,
             )
         except OpenAIError as exc:
             raise JudgeError(JudgeCode.MODEL_UNAVAILABLE, f"{label} failed: {exc}.") from exc
@@ -61,6 +64,14 @@ def _refusal_fallback(label: str) -> str:
     return "The model refused to judge evidence."
 
 
+def _stopped_reason(response: Response) -> str:
+    status = "unfinished" if response.status is None else response.status
+    incomplete = response.incomplete_details
+    if incomplete is not None and incomplete.reason is not None:
+        return incomplete.reason
+    return status
+
+
 def _response_text(response: Response, label: str) -> str:
     if response.status == "failed":
         if response.error is None:
@@ -70,11 +81,7 @@ def _response_text(response: Response, label: str) -> str:
             f"{label} failed: {response.error.code}: {response.error.message}.",
         )
     if response.status != "completed":
-        reason = response.status if response.status is not None else "unfinished"
-        details = response.incomplete_details
-        if details is not None and details.reason is not None:
-            reason = details.reason
-        fail(JudgeCode.MODEL_UNAVAILABLE, f"{label} stopped: {reason}.")
+        fail(JudgeCode.MODEL_UNAVAILABLE, f"{label} stopped: {_stopped_reason(response)}.")
     for item in response.output:
         if not isinstance(item, ResponseOutputMessage):
             continue

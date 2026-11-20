@@ -113,7 +113,10 @@ class ObservedTransition:
 
 @dataclass(frozen=True, slots=True)
 class Traversal:
-    """Every start-to-end path, and the one path the established branch selects."""
+    """Every start-to-end path, and the one path the established branch selects.
+
+    order_tied is true when two stage actions share a turn and offset.
+    """
 
     candidate_paths: tuple[tuple[str, ...], ...]
     expected_path: tuple[str, ...] | None
@@ -123,6 +126,7 @@ class Traversal:
     unreached_nodes: tuple[str, ...]
     validity: PathValidity
     complete: bool
+    order_tied: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -613,6 +617,112 @@ def _classify_node(
     return _result(node_id, items, NodeStatus.NOT_REACHED, Applicability.APPLICABLE)
 
 
+def _conditional_nodes(rubric: Rubric) -> Mapping[str, str]:
+    return MappingProxyType(
+        {
+            criterion.id: criterion.node_id
+            for criterion in rubric.criteria
+            if criterion.requirement_type is RequirementType.CONDITIONAL
+        }
+    )
+
+
+def _entered_before(
+    kept: tuple[StageEvent, ...] | list[StageEvent],
+    sources: tuple[str, ...],
+    event: StageEvent,
+) -> bool:
+    source_ids = set(sources)
+    for prior in kept:
+        if prior.node_id not in source_ids:
+            continue
+        if (prior.turn, prior.start) < (event.turn, event.start):
+            return True
+    return False
+
+
+def _reachable_events(workflow: Workflow, events: tuple[StageEvent, ...]) -> tuple[StageEvent, ...]:
+    """Keep stage entries that occur after a predecessor stage has been entered."""
+
+    predecessors = _predecessors(workflow)
+    kept: list[StageEvent] = []
+    for event in sorted(events, key=lambda item: (item.turn, item.start, item.node_id)):
+        sources = predecessors.get(event.node_id)
+        if sources is None:
+            continue
+        if not sources or _entered_before(kept, sources, event):
+            kept.append(event)
+    return tuple(kept)
+
+
+def _reach_turn(
+    predecessors: Mapping[str, tuple[str, ...]],
+    events: tuple[StageEvent, ...],
+    node_id: str,
+) -> int | None:
+    sources = predecessors.get(node_id, ())
+    if not sources:
+        return 0
+    turns = [event.turn for event in events if event.node_id in sources]
+    if not turns:
+        return None
+    return min(turns)
+
+
+def _cited_before_reach(finding: CriterionFinding, reach: int | None) -> bool:
+    if finding.applicability is not Applicability.APPLICABLE:
+        return False
+    if reach is None:
+        return True
+    if finding.action_turn is not None and finding.action_turn < reach:
+        return True
+    return bool(finding.evidence_turns) and max(finding.evidence_turns) < reach
+
+
+def _withdraw_condition(finding: CriterionFinding) -> CriterionFinding:
+    return CriterionFinding(
+        criterion_id=finding.criterion_id,
+        applicability=Applicability.NOT_APPLICABLE,
+        result=FindingResult.UNMET,
+        evidence_turns=(),
+        action_turn=None,
+        reason="This condition is cited before the workflow reaches this step.",
+    )
+
+
+def _ground_findings(workflow: Workflow, rubric: Rubric, evidence: Evidence) -> Evidence:
+    """Withdraw a conditional finding cited before its node can be reached.
+
+    A conditional step applies only after a predecessor stage has been entered.
+    An earlier repair does not establish that condition.
+    """
+
+    conditional = _conditional_nodes(rubric)
+    if not conditional:
+        return evidence
+    predecessors = _predecessors(workflow)
+    events = _reachable_events(workflow, evidence.stage_events)
+    findings: list[CriterionFinding] = []
+    changed = False
+    for finding in evidence.findings:
+        node_id = conditional.get(finding.criterion_id)
+        if node_id is None:
+            findings.append(finding)
+            continue
+        if _cited_before_reach(finding, _reach_turn(predecessors, events, node_id)):
+            findings.append(_withdraw_condition(finding))
+            changed = True
+            continue
+        findings.append(finding)
+    if not changed:
+        return evidence
+    return Evidence(
+        findings=tuple(findings),
+        by_id=MappingProxyType({item.criterion_id: item for item in findings}),
+        stage_events=events,
+    )
+
+
 def classify_nodes(
     workflow: Workflow,
     rubric: Rubric,
@@ -622,6 +732,7 @@ def classify_nodes(
     """Return one deterministic result for every workflow node."""
 
     _require_coverage(workflow, rubric)
+    evidence = _ground_findings(workflow, rubric, evidence)
     grouped = {
         node.id: tuple(_assess(criterion, evidence) for criterion in rubric.by_node[node.id])
         for node in workflow.nodes
@@ -846,7 +957,7 @@ def verify_traversal(
 
     paths = _complete_paths(workflow)
     expected = _expected_path(paths, evaluation)
-    folded = _fold_events(workflow, evidence.stage_events, expected)
+    folded = _fold_events(workflow, _reachable_events(workflow, evidence.stage_events), expected)
     end_ids = frozenset(node.id for node in workflow.nodes if node.type == "end")
     omitted, unreached = _gap_nodes(expected, folded.observed, evaluation)
     validity = _validity(
@@ -865,6 +976,7 @@ def verify_traversal(
         unreached_nodes=unreached,
         validity=validity,
         complete=validity is PathValidity.VALID,
+        order_tied=folded.tied,
     )
 
 

@@ -1836,7 +1836,7 @@ Output constraints:
 - Describing a procedure is not performing it. Promising to do something later is not completing it. Both are unmet. You may cite the explaining or promising turn, with a null action_turn.
 - If the obligation is satisfied by honoring a refusal, that refusal is met. If the obligation requires an action the speaker refuses, do not mark it met.
 - A conditional trigger that never occurs is not_applicable. An exclusive alternative the transcript does not settle is uncertain. When one alternative in a group is applicable, the others in that group are not_applicable.
-- A conditional obligation applies only when its own condition occurred. An apology, a complaint about an earlier event, or repairing an interruption does not establish that condition. Paraphrase counts only after the condition has occurred.
+- A conditional obligation applies only when its own condition occurred. An apology, a complaint about an earlier event, or repairing an interruption does not establish that condition. Paraphrase counts only after the condition has occurred. A conditional obligation cited only before a predecessor stage has been entered is not_applicable, and that citation is not a stage event.
 - A spoken confirmation may support a confirmation obligation. It does not show that any system stored the result. Do not claim that a record was saved.
 
 Also return stage_events. A stage event records an assistant action that enters a workflow stage. It is not a path, a score, or a claim that an edge exists.

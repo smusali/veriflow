@@ -17,6 +17,7 @@ dependencies = [
 dev = [
     "mypy>=2.4.1",
     "pre-commit>=4.7.0",
+    "pytest>=8.3",
     "ruff>=0.17.6",
 ]
 
@@ -26,7 +27,7 @@ packages = ["src"]
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-src = ["src", "main.py", "scripts"]
+src = ["src", "main.py", "scripts", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
@@ -34,6 +35,7 @@ ignore = ["E501"]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
+known-first-party = ["src"]
 
 [tool.ruff.lint.per-file-ignores]
 # common inserts the repo root on the path before the package is imported.
@@ -42,6 +44,10 @@ combine-as-imports = true
 [tool.mypy]
 python_version = "3.12"
 strict = true
-files = ["src", "main.py"]
+files = ["src", "main.py", "tests"]
 warn_unused_ignores = true
 warn_return_any = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

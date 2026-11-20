@@ -1,0 +1,14 @@
+[
+  {
+    "role": "user",
+    "content": "Hello.",
+    "beginning": 0,
+    "end": 3
+  },
+  {
+    "role": "assistant",
+    "content": "I am here.",
+    "beginning": 2,
+    "end": 4
+  }
+]

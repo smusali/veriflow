@@ -1,0 +1,848 @@
+{
+  "conventions": {
+    "fixture_paths": "Paths are relative to the fixtures directory.",
+    "omitted_expected_fields": "Fields absent from expected are not asserted.",
+    "null_values": "A present null is an asserted null. This includes adherence_score when a conversation cannot be scored.",
+    "status_values": "A status string is exact. An array of statuses means any one listed status satisfies the case.",
+    "evidence_indexes": "Transcript evidence indexes are zero-based when a case includes them.",
+    "outcomes": "outcome is evaluated, accepted, input_error, or unsupported.",
+    "basis": "requirement means the graph or the input contract fixes the outcome. interpretation means the outcome follows the chosen conservative rubric. mixed means firm_fields and interpretation_fields name the expected keys, or node_statuses.<id>, that belong to each side.",
+    "criterion_ids_role": "criterion_ids are the assertion vocabulary for this workflow. Evaluation criteria are still derived from node descriptions. 3.contact_number is a conditional subrequirement of 3.patient_information for new patients, not a sixth always-on scheduling criterion.",
+    "score": "adherence_score is present only for the original conversation and for an empty transcript. The original conversation score is the mean of applicable per-criterion ratios times the valid-transition ratio, scaled and rounded to two decimals."
+  },
+  "criterion_ids": [
+    {
+      "id": "1.greeting",
+      "node_id": "1",
+      "description": "Welcome the caller"
+    },
+    {
+      "id": "1.identity",
+      "node_id": "1",
+      "description": "Identify the assistant or its role"
+    },
+    {
+      "id": "1.assistance_offer",
+      "node_id": "1",
+      "description": "Invite the caller to state their need"
+    },
+    {
+      "id": "2.appointment_type",
+      "node_id": "2",
+      "description": "Establish the type of appointment"
+    },
+    {
+      "id": "2.provider_preference",
+      "node_id": "2",
+      "description": "Establish a provider preference or no preference"
+    },
+    {
+      "id": "2.patient_status",
+      "node_id": "2",
+      "description": "Establish whether the patient is new or returning"
+    },
+    {
+      "id": "2.urgency",
+      "node_id": "2",
+      "description": "Establish the urgency of the issue"
+    },
+    {
+      "id": "3.patient_information",
+      "node_id": "3",
+      "description": "Obtain the patient details required for the established patient status"
+    },
+    {
+      "id": "3.contact_number",
+      "node_id": "3",
+      "description": "Obtain a contact number when the patient is new"
+    },
+    {
+      "id": "3.appointment_offer",
+      "node_id": "3",
+      "description": "Offer a specific appointment"
+    },
+    {
+      "id": "3.acceptance",
+      "node_id": "3",
+      "description": "Obtain caller acceptance of the offered appointment"
+    },
+    {
+      "id": "3.confirmation",
+      "node_id": "3",
+      "description": "Confirm the accepted appointment"
+    },
+    {
+      "id": "3.preparation",
+      "node_id": "3",
+      "description": "Provide preparation or arrival instructions"
+    },
+    {
+      "id": "4.response",
+      "node_id": "4",
+      "description": "Respond appropriately to the qualifying exception that occurred"
+    },
+    {
+      "id": "5.summary",
+      "node_id": "5",
+      "description": "Summarize the appointment outcome"
+    },
+    {
+      "id": "5.reminders",
+      "node_id": "5",
+      "description": "Offer reminders or honor a stated refusal"
+    },
+    {
+      "id": "5.further_assistance",
+      "node_id": "5",
+      "description": "Offer a chance to ask for further help"
+    },
+    {
+      "id": "5.closing",
+      "node_id": "5",
+      "description": "Close the conversation politely"
+    }
+  ],
+  "cases": [
+    {
+      "id": "ASSIGNMENT",
+      "title": "Original conversation",
+      "category": "baseline",
+      "basis": "interpretation",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": "assignment_transcript.json",
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "1": "completed",
+          "2": "partial",
+          "3": "completed",
+          "4": "not_applicable",
+          "5": "completed"
+        },
+        "observed_path": ["1", "2", "3", "5"],
+        "path_validity": "valid",
+        "verdict": "partial",
+        "adherence_score": 93.75
+      },
+      "notes": "Node 2 meets appointment type, provider preference, and returning-patient status. Urgency stays unresolved under the conservative reading. The earlier explanation of scheduling is not scheduling. The score is the mean of applicable per-criterion ratios times the valid-transition ratio, scaled and rounded to two decimals."
+    },
+    {
+      "id": "C01",
+      "title": "Normal returning patient",
+      "category": "scheduling",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": "scenarios/C01.json",
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "1": "completed",
+          "2": "completed",
+          "3": "completed",
+          "4": "not_applicable",
+          "5": "completed"
+        },
+        "observed_path": ["1", "2", "3", "5"],
+        "path_validity": "valid",
+        "verdict": "completed"
+      }
+    },
+    {
+      "id": "C02",
+      "title": "Normal new patient",
+      "category": "scheduling",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "3": "completed",
+          "4": "not_applicable"
+        },
+        "observed_path": ["1", "2", "3", "5"],
+        "path_validity": "valid",
+        "verdict": "completed"
+      },
+      "notes": "A new patient supplies full name, date of birth, and contact number before scheduling is complete. Contact number is the conditional subrequirement 3.contact_number of 3.patient_information."
+    },
+    {
+      "id": "C03",
+      "title": "No error condition",
+      "category": "scheduling",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "4": "not_applicable"
+        }
+      },
+      "notes": "When no qualifying exception occurs, node 4 is not applicable. That status is not a skipped step."
+    },
+    {
+      "id": "C04",
+      "title": "Unavailable slot, alternative accepted",
+      "category": "scheduling",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": "scenarios/C04.json",
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "3": "completed",
+          "4": "completed"
+        },
+        "observed_path": ["1", "2", "3", "4", "5"],
+        "path_validity": "valid"
+      }
+    },
+    {
+      "id": "C05",
+      "title": "Alternatives declined",
+      "category": "scheduling",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "3": "partial",
+          "4": "completed"
+        }
+      },
+      "notes": "The closing is assessed against the actual outcome, with no booked appointment after every alternative is declined."
+    },
+    {
+      "id": "C06",
+      "title": "New patient without contact number",
+      "category": "scheduling",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "3": "partial"
+        },
+        "missing_criteria": ["3.contact_number"]
+      }
+    },
+    {
+      "id": "C07",
+      "title": "Returning patient without phone number",
+      "category": "scheduling",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "3": "completed"
+        }
+      },
+      "notes": "A returning patient does not need a contact number. Omitting 3.contact_number is not a penalty and does not leave 3.patient_information unmet."
+    },
+    {
+      "id": "C08",
+      "title": "Patient volunteers required details",
+      "category": "scheduling",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated"
+      },
+      "notes": "Count details the caller volunteers, including name, date of birth, patient status, and contact number when those details are required. A repeated question is not required."
+    },
+    {
+      "id": "C09",
+      "title": "Patient cannot provide date of birth",
+      "category": "scheduling",
+      "basis": "mixed",
+      "firm_fields": [],
+      "interpretation_fields": [
+        "node_statuses.3",
+        "node_statuses.4",
+        "node_statuses.5",
+        "verdict"
+      ],
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "3": "partial",
+          "4": "not_reached",
+          "5": "not_reached"
+        },
+        "verdict": "incomplete"
+      },
+      "notes": "The requirement is that node 3 is not incorrect: the caller cannot provide the date of birth. The reading is partial for node 3, not_reached for later nodes, and an incomplete verdict."
+    },
+    {
+      "id": "C10",
+      "title": "First appointment rejected, second accepted",
+      "category": "scheduling",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "3": "completed"
+        },
+        "observed_path": ["1", "2", "3", "5"],
+        "path_validity": "valid"
+      },
+      "notes": "The first offer is declined and the second is accepted inside the same node 3 visit. That continuation is not a cycle."
+    },
+    {
+      "id": "C11",
+      "title": "Semantically equivalent phrasing",
+      "category": "semantic",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "3": "completed"
+        }
+      },
+      "notes": "A paraphrase such as birthday for date of birth satisfies the applicable request."
+    },
+    {
+      "id": "C12",
+      "title": "Explaining a procedure",
+      "category": "semantic",
+      "basis": "mixed",
+      "firm_fields": [],
+      "interpretation_fields": [
+        "node_statuses.2",
+        "node_statuses.3",
+        "verdict"
+      ],
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": "scenarios/C12.json",
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "2": "not_reached",
+          "3": "not_reached"
+        },
+        "verdict": "incomplete"
+      },
+      "notes": "Describing the usual scheduling steps does not complete nodes 2 or 3. The reading treats both as not_reached because the call ends before scheduling begins."
+    },
+    {
+      "id": "C13",
+      "title": "Promising future action",
+      "category": "semantic",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "3": ["partial", "incorrect", "skipped", "not_applicable", "not_reached"]
+        }
+      },
+      "notes": "A promise to book is not confirmation. Node 3 is not completed on a promise alone."
+    },
+    {
+      "id": "C14",
+      "title": "Requirement fulfilled across turns",
+      "category": "semantic",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "3": "completed"
+        }
+      },
+      "notes": "Name and date of birth may be established on different turns and still satisfy 3.patient_information together."
+    },
+    {
+      "id": "C15",
+      "title": "Multiple node actions in one turn",
+      "category": "semantic",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "3": "completed",
+          "5": "completed"
+        }
+      },
+      "notes": "One assistant turn may support node 3 confirmation and node 5 closing at the same time."
+    },
+    {
+      "id": "C16",
+      "title": "Interrupted or overlapping speech",
+      "category": "semantic",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated"
+      },
+      "notes": "Preserve the supplied turn order and intervals. Overlapping speech is not a workflow penalty and does not create an extra transition."
+    },
+    {
+      "id": "C17",
+      "title": "Unrelated conversational detour",
+      "category": "semantic",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "4": "not_applicable"
+        },
+        "path_validity": "valid"
+      },
+      "notes": "A complaint about a past visit is not a graph transition and is not node 4."
+    },
+    {
+      "id": "C18",
+      "title": "Repeated question",
+      "category": "semantic",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated"
+      },
+      "notes": "A repeated question stays inside the same node visit. It does not add a path entry or a second credit for the same criterion."
+    },
+    {
+      "id": "C19",
+      "title": "Corrected appointment offer",
+      "category": "semantic",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "3": "completed",
+          "5": "completed"
+        }
+      },
+      "notes": "Judge the corrected time the caller accepts. An earlier offer that was replaced does not make the confirmation incorrect."
+    },
+    {
+      "id": "C20",
+      "title": "Ambiguous urgency",
+      "category": "semantic",
+      "basis": "interpretation",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "2": "partial"
+        },
+        "missing_criteria": ["2.urgency"]
+      },
+      "notes": "A phrase such as nothing complicated does not by itself establish urgency."
+    },
+    {
+      "id": "C21",
+      "title": "Caller declines reminders",
+      "category": "semantic",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "5": "completed"
+        }
+      },
+      "notes": "If the caller already refused reminders, honoring that refusal satisfies 5.reminders. A second offer is not required."
+    },
+    {
+      "id": "C22",
+      "title": "Corrected patient details",
+      "category": "semantic",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "3": "completed"
+        }
+      },
+      "notes": "Use the date of birth the caller settles on after a correction. The replaced value does not remain the established one."
+    },
+    {
+      "id": "C23",
+      "title": "Historical quoted action",
+      "category": "semantic",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated"
+      },
+      "notes": "A caller quoting a past assistant does not attribute that action to the current assistant. The quotation alone does not complete the quoted step."
+    },
+    {
+      "id": "C24",
+      "title": "Ambiguous appointment acceptance",
+      "category": "semantic",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "3": ["partial", "incorrect", "skipped", "not_applicable", "not_reached"]
+        },
+        "missing_criteria": ["3.acceptance"]
+      },
+      "notes": "Maybe Tuesday is not acceptance. Consent is not inferred, so node 3 is not completed on that reply alone."
+    },
+    {
+      "id": "C25",
+      "title": "Mandatory appointment determination omitted",
+      "category": "traversal",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": "scenarios/C25.json",
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "2": "skipped"
+        },
+        "observed_path": ["1", "3", "5"],
+        "path_validity": "invalid",
+        "verdict": "failed"
+      }
+    },
+    {
+      "id": "C26",
+      "title": "Premature confirmation",
+      "category": "traversal",
+      "basis": "mixed",
+      "firm_fields": [],
+      "interpretation_fields": ["node_statuses.3"],
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "3": ["incorrect", "partial"]
+        }
+      },
+      "notes": "Required actions are ordered. Confirmation before the necessary details or acceptance does not complete node 3. The reading allows incorrect or partial."
+    },
+    {
+      "id": "C27",
+      "title": "Wrong provider confirmed",
+      "category": "traversal",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "3": "incorrect"
+        }
+      },
+      "notes": "The confirmed provider differs from the provider the caller requested."
+    },
+    {
+      "id": "C28",
+      "title": "Incorrect final appointment summary",
+      "category": "traversal",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "5": "incorrect"
+        }
+      },
+      "notes": "The final summary names a different time than the one the caller accepted."
+    },
+    {
+      "id": "C29",
+      "title": "Actual transition from node 2 to node 4",
+      "category": "traversal",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated",
+        "path_validity": "invalid",
+        "verdict": "failed"
+      },
+      "notes": "The graph has no transition from node 2 to node 4. A real move from node 2 into node 4 is an invalid transition."
+    },
+    {
+      "id": "C30",
+      "title": "Early conversational clarification",
+      "category": "traversal",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "4": "not_applicable"
+        }
+      },
+      "notes": "Clarifying unclear speech before scheduling starts is incidental repair. It does not create a node 4 visit."
+    },
+    {
+      "id": "C31",
+      "title": "Recovery followed by continued scheduling",
+      "category": "traversal",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "3": "completed",
+          "4": "completed"
+        },
+        "observed_path": ["1", "2", "3", "4", "5"],
+        "path_validity": "valid"
+      },
+      "notes": "After the unavailable slot is handled, later scheduling offers stay inside the same node 3 execution. The graph has no transition from node 4 back to node 3."
+    },
+    {
+      "id": "C32",
+      "title": "Separate second booking attempt",
+      "category": "traversal",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated",
+        "verdict": "failed"
+      },
+      "notes": "A second distinct booking is not a legal transition on this graph. A new workflow instance does not add edges."
+    },
+    {
+      "id": "C33",
+      "title": "Caller hangs up early",
+      "category": "traversal",
+      "basis": "mixed",
+      "firm_fields": ["verdict"],
+      "interpretation_fields": [
+        "node_statuses.3",
+        "node_statuses.4",
+        "node_statuses.5"
+      ],
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "3": "not_reached",
+          "4": "not_reached",
+          "5": "not_reached"
+        },
+        "verdict": "incomplete"
+      },
+      "notes": "The caller ends the call before scheduling details. Later nodes are not skipped. The reading is not_reached."
+    },
+    {
+      "id": "C34",
+      "title": "Assistant ends before required work",
+      "category": "traversal",
+      "basis": "mixed",
+      "firm_fields": ["node_statuses.3"],
+      "interpretation_fields": ["verdict"],
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "3": "skipped"
+        },
+        "verdict": ["incomplete", "failed"]
+      },
+      "notes": "The assistant closes while the caller is ready to continue. The omitted applicable scheduling step is skipped."
+    },
+    {
+      "id": "C35",
+      "title": "Confirmation without acceptance",
+      "category": "traversal",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated",
+        "node_statuses": {
+          "3": "incorrect"
+        }
+      },
+      "notes": "Claiming the appointment is confirmed without caller acceptance is incorrect."
+    },
+    {
+      "id": "C36",
+      "title": "User changes intent to cancellation",
+      "category": "traversal",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "unsupported"
+      },
+      "notes": "Cancellation is outside this graph. The call is not treated as a successful booking path."
+    },
+    {
+      "id": "C37",
+      "title": "Claimed backend booking",
+      "category": "traversal",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "evaluated"
+      },
+      "notes": "A statement that the booking was saved may support conversational confirmation. It does not establish that a backend stored the appointment. No persistence result is expected."
+    },
+    {
+      "id": "C38",
+      "title": "Malformed JSON",
+      "category": "input",
+      "basis": "requirement",
+      "workflow_fixture": "scenarios/C38.txt",
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "input_error",
+        "error": "malformed_json"
+      }
+    },
+    {
+      "id": "C39",
+      "title": "Missing required fields",
+      "category": "input",
+      "basis": "requirement",
+      "workflow_fixture": null,
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "input_error",
+        "error": "missing_required_field"
+      },
+      "notes": "A node missing data.description, or a turn missing a required field, is an input error."
+    },
+    {
+      "id": "C40",
+      "title": "Unsupported transcript role",
+      "category": "input",
+      "basis": "requirement",
+      "workflow_fixture": null,
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "input_error",
+        "error": "unsupported_role"
+      },
+      "notes": "A role such as system is rejected. The supported roles are user and assistant."
+    },
+    {
+      "id": "C41",
+      "title": "Invalid timestamps",
+      "category": "input",
+      "basis": "requirement",
+      "workflow_fixture": null,
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "input_error",
+        "error": "invalid_timestamp"
+      },
+      "notes": "A turn whose end is earlier than its beginning, or a non-numeric time, is an input error."
+    },
+    {
+      "id": "C42",
+      "title": "Overlapping intervals",
+      "category": "input",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": "scenarios/C42.json",
+      "expected": {
+        "outcome": "accepted"
+      }
+    },
+    {
+      "id": "C43",
+      "title": "Unsorted transcript starts",
+      "category": "input",
+      "basis": "requirement",
+      "workflow_fixture": null,
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "input_error",
+        "error": "unsorted_turns"
+      },
+      "notes": "Turns whose start times decrease are an input error. The turns stay in the supplied order."
+    },
+    {
+      "id": "C44",
+      "title": "Duplicate node ids",
+      "category": "input",
+      "basis": "requirement",
+      "workflow_fixture": "scenarios/C44_graph.json",
+      "transcript_fixture": "scenarios/C01.json",
+      "expected": {
+        "outcome": "input_error",
+        "error": "duplicate_node_id"
+      }
+    },
+    {
+      "id": "C45",
+      "title": "Dangling graph edge",
+      "category": "input",
+      "basis": "requirement",
+      "workflow_fixture": null,
+      "transcript_fixture": null,
+      "expected": {
+        "outcome": "input_error",
+        "error": "dangling_edge"
+      },
+      "notes": "An edge whose target is not a node id, such as 9, is an input error."
+    },
+    {
+      "id": "C46",
+      "title": "Empty transcript",
+      "category": "input",
+      "basis": "requirement",
+      "workflow_fixture": "assignment_graph.json",
+      "transcript_fixture": "scenarios/C46.json",
+      "expected": {
+        "outcome": "evaluated",
+        "path_validity": "incomplete",
+        "verdict": "incomplete",
+        "adherence_score": null
+      }
+    },
+    {
+      "id": "C47",
+      "title": "Cyclic or multi-start graph",
+      "category": "input",
+      "basis": "requirement",
+      "workflow_fixture": "scenarios/C47_graph.json",
+      "transcript_fixture": "scenarios/C01.json",
+      "expected": {
+        "outcome": "unsupported",
+        "error": "unsupported_graph"
+      },
+      "notes": "A cycle is unsupported. A second start node is the same unsupported class."
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "edges": [
+    {"id": "e1-2", "source": "1", "target": "2"},
+    {"id": "e2-5", "source": "2", "target": "5"},
+    {"id": "e5-2", "source": "5", "target": "2"}
+  ],
+  "nodes": [
+    {
+      "id": "1",
+      "data": {
+        "label": "Introduction",
+        "description": "Greet the caller and offer help."
+      },
+      "type": "start",
+      "position": {"x": 0, "y": 0}
+    },
+    {
+      "id": "2",
+      "data": {
+        "label": "Scheduling",
+        "description": "Schedule the appointment."
+      },
+      "type": "process",
+      "position": {"x": 0, "y": 1}
+    },
+    {
+      "id": "5",
+      "data": {
+        "label": "Close",
+        "description": "Close the conversation."
+      },
+      "type": "end",
+      "position": {"x": 0, "y": 2}
+    }
+  ]
+}

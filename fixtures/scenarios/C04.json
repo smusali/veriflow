@@ -1,0 +1,62 @@
+[
+  {
+    "role": "user",
+    "content": "Hello.",
+    "beginning": 0,
+    "end": 1
+  },
+  {
+    "role": "assistant",
+    "content": "Thank you for calling NexaCare. This is Riley, your scheduling assistant. How may I help you today?",
+    "beginning": 2,
+    "end": 6
+  },
+  {
+    "role": "user",
+    "content": "I need a routine checkup. It is not urgent. The first available provider is fine. I am a returning patient. My name is Jordan Lee and my date of birth is March 2, 1985. I would like 9 AM.",
+    "beginning": 7,
+    "end": 16
+  },
+  {
+    "role": "assistant",
+    "content": "You are a returning patient for a routine checkup with the first available provider, and this is not urgent. 9 AM is not available. Would 11 AM with Doctor Emily Carter work?",
+    "beginning": 17,
+    "end": 24
+  },
+  {
+    "role": "user",
+    "content": "Yes, 11 AM works.",
+    "beginning": 25,
+    "end": 27
+  },
+  {
+    "role": "assistant",
+    "content": "You are confirmed with Doctor Emily Carter at 11 AM. Please arrive 15 minutes early. Would you like a reminder?",
+    "beginning": 28,
+    "end": 34
+  },
+  {
+    "role": "user",
+    "content": "Yes.",
+    "beginning": 35,
+    "end": 36
+  },
+  {
+    "role": "assistant",
+    "content": "I will send a reminder. Is there anything else I can help with today?",
+    "beginning": 37,
+    "end": 41
+  },
+  {
+    "role": "user",
+    "content": "No.",
+    "beginning": 42,
+    "end": 43
+  },
+  {
+    "role": "assistant",
+    "content": "Thank you for scheduling with NexaCare.",
+    "beginning": 44,
+    "end": 47
+  }
+]

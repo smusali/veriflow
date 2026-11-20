@@ -1,0 +1,38 @@
+[
+  {
+    "role": "user",
+    "content": "Hello.",
+    "beginning": 0,
+    "end": 1
+  },
+  {
+    "role": "assistant",
+    "content": "Thank you for calling NexaCare. This is Riley, your scheduling assistant. How may I help you today?",
+    "beginning": 2,
+    "end": 6
+  },
+  {
+    "role": "user",
+    "content": "How does scheduling work?",
+    "beginning": 7,
+    "end": 9
+  },
+  {
+    "role": "assistant",
+    "content": "We usually ask what kind of appointment you need, then we collect a name and date of birth, then we offer a time and confirm it.",
+    "beginning": 10,
+    "end": 16
+  },
+  {
+    "role": "user",
+    "content": "Thanks, that is all I needed.",
+    "beginning": 17,
+    "end": 19
+  },
+  {
+    "role": "assistant",
+    "content": "You are welcome. Thank you for calling NexaCare.",
+    "beginning": 20,
+    "end": 23
+  }
+]

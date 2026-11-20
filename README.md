@@ -166,7 +166,17 @@ These inputs fail before judgment:
 - An unsettled branch has a null score.
 - Temperature 0.0 still allows wording to change across model revisions.
 
-[fixtures/case_catalog.json](fixtures/case_catalog.json) defines ASSIGNMENT plus C01 through C47. Runnable files live under [fixtures/scenarios/](fixtures/scenarios). A null transcript fixture is a specification.
+[fixtures/case_catalog.json](fixtures/case_catalog.json) defines ASSIGNMENT plus C01 through C47. A null transcript fixture is a specification. Runnable files:
+
+- [fixtures/scenarios/returning_patient_transcript.json](fixtures/scenarios/returning_patient_transcript.json)
+- [fixtures/scenarios/unavailable_slot_accepted_transcript.json](fixtures/scenarios/unavailable_slot_accepted_transcript.json)
+- [fixtures/scenarios/procedure_explanation_transcript.json](fixtures/scenarios/procedure_explanation_transcript.json)
+- [fixtures/scenarios/omitted_appointment_determination_transcript.json](fixtures/scenarios/omitted_appointment_determination_transcript.json)
+- [fixtures/scenarios/overlapping_intervals_transcript.json](fixtures/scenarios/overlapping_intervals_transcript.json)
+- [fixtures/scenarios/empty_transcript.json](fixtures/scenarios/empty_transcript.json)
+- [fixtures/scenarios/malformed_json.txt](fixtures/scenarios/malformed_json.txt)
+- [fixtures/scenarios/duplicate_node_ids_graph.json](fixtures/scenarios/duplicate_node_ids_graph.json)
+- [fixtures/scenarios/cyclic_graph.json](fixtures/scenarios/cyclic_graph.json)
 
 ## Reproduce the Original Result
 

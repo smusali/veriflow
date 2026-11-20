@@ -222,5 +222,9 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
+# Demo web build
+demo/web/node_modules/
+demo/web/dist/
+
 # Mac-related stuff
 **/.DS_Store

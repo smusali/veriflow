@@ -39,6 +39,16 @@ python main.py \
 
 The checked-in sample is [examples/assignment_result.json](examples/assignment_result.json).
 
+## Demo
+
+The demo is a local page for one graph and one transcript.
+
+- Copy `.env.example` to `.env` and set the key and model.
+- Start it with `docker compose up --build`.
+- Open `http://localhost:8080`.
+
+The page starts empty. Choose a case from the dropdown to load its graph and transcript, or paste or upload either side on its own. Run evaluates the text currently on the page. Run all evaluates every case that has both files. A result stays off the page until a run finishes.
+
 ## Algorithm and Split
 
 The same words can be a paraphrase, an explanation, a promise, a quotation, or a correction. An edge, a status, and a score stay fixed when the findings stay fixed.
@@ -216,7 +226,7 @@ These inputs fail before judgment:
 
 ## Limits
 
-- No drawing of the conversation.
+- The evaluator returns JSON. The demo page draws one graph and one transcript.
 - No backend or persistence check.
 - No second booking cycle.
 - No re-entry after the end node.

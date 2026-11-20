@@ -13,6 +13,12 @@ dependencies = [
     "python-dotenv==1.2.4",
 ]
 
+[project.optional-dependencies]
+demo = [
+    "fastapi==0.165.0",
+    "uvicorn==0.54.0",
+]
+
 [dependency-groups]
 dev = [
     "mypy>=2.4.1",
@@ -27,7 +33,7 @@ packages = ["src"]
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-src = ["src", "main.py", "scripts", "tests"]
+src = ["src", "main.py", "scripts", "tests", "demo"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
@@ -35,7 +41,7 @@ ignore = ["E501"]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
-known-first-party = ["src"]
+known-first-party = ["src", "demo"]
 
 [tool.ruff.lint.per-file-ignores]
 # common inserts the repo root on the path before the package is imported.
@@ -44,7 +50,7 @@ known-first-party = ["src"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
-files = ["src", "main.py", "tests"]
+files = ["src", "main.py", "tests", "demo"]
 warn_unused_ignores = true
 warn_return_any = true
 

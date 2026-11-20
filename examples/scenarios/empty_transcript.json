@@ -1,0 +1,441 @@
+{
+  "overall": {
+    "adherence_score": null,
+    "verdict": "incomplete",
+    "path_validity": "incomplete"
+  },
+  "expected_path": [
+    "1",
+    "2",
+    "3",
+    "5"
+  ],
+  "observed_path": [],
+  "transitions": [],
+  "node_results": {
+    "1": {
+      "status": "not_reached",
+      "applicability": "applicable",
+      "score": null,
+      "evidence_turns": [],
+      "missing_requirements": [
+        "1.organization_greeting",
+        "1.speaker_identity",
+        "1.help_offer"
+      ],
+      "violated_requirements": [],
+      "explanation": "The conversation ended before this step.",
+      "criteria": [
+        {
+          "id": "1.organization_greeting",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "1.organization_greeting"
+          ],
+          "violated_requirements": [],
+          "reason": "The transcript has no turns, so the obligation was not met."
+        },
+        {
+          "id": "1.speaker_identity",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "1.speaker_identity"
+          ],
+          "violated_requirements": [],
+          "reason": "The transcript has no turns, so the obligation was not met."
+        },
+        {
+          "id": "1.help_offer",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "1.help_offer"
+          ],
+          "violated_requirements": [],
+          "reason": "The transcript has no turns, so the obligation was not met."
+        }
+      ]
+    },
+    "2": {
+      "status": "not_reached",
+      "applicability": "applicable",
+      "score": null,
+      "evidence_turns": [],
+      "missing_requirements": [
+        "2.identify_appointment_type",
+        "2.provider_preference",
+        "2.new_or_returning",
+        "2.urgency_of_issue"
+      ],
+      "violated_requirements": [],
+      "explanation": "The conversation ended before this step.",
+      "criteria": [
+        {
+          "id": "2.identify_appointment_type",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "2.identify_appointment_type"
+          ],
+          "violated_requirements": [],
+          "reason": "The transcript has no turns, so the obligation was not met."
+        },
+        {
+          "id": "2.provider_preference",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "2.provider_preference"
+          ],
+          "violated_requirements": [],
+          "reason": "The transcript has no turns, so the obligation was not met."
+        },
+        {
+          "id": "2.new_or_returning",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "2.new_or_returning"
+          ],
+          "violated_requirements": [],
+          "reason": "The transcript has no turns, so the obligation was not met."
+        },
+        {
+          "id": "2.urgency_of_issue",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "2.urgency_of_issue"
+          ],
+          "violated_requirements": [],
+          "reason": "The transcript has no turns, so the obligation was not met."
+        }
+      ]
+    },
+    "3": {
+      "status": "not_reached",
+      "applicability": "applicable",
+      "score": null,
+      "evidence_turns": [],
+      "missing_requirements": [
+        "3.full_name",
+        "3.dob",
+        "3.offer_appointment_times",
+        "3.accept_appointment_time",
+        "3.confirm_appointment_time",
+        "3.provide_preparation_instructions"
+      ],
+      "violated_requirements": [],
+      "explanation": "The conversation ended before this step.",
+      "criteria": [
+        {
+          "id": "3.patient_information",
+          "applicability": "applicable",
+          "result": "insufficient",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "3.full_name",
+            "3.dob"
+          ],
+          "violated_requirements": [],
+          "reason": "The transcript has no turns, so the obligation was not met."
+        },
+        {
+          "id": "3.offer_appointment_times",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "3.offer_appointment_times"
+          ],
+          "violated_requirements": [],
+          "reason": "The transcript has no turns, so the obligation was not met."
+        },
+        {
+          "id": "3.accept_appointment_time",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "3.accept_appointment_time"
+          ],
+          "violated_requirements": [],
+          "reason": "The transcript has no turns, so the obligation was not met."
+        },
+        {
+          "id": "3.confirm_appointment_time",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "3.confirm_appointment_time"
+          ],
+          "violated_requirements": [],
+          "reason": "The transcript has no turns, so the obligation was not met."
+        },
+        {
+          "id": "3.provide_preparation_instructions",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "3.provide_preparation_instructions"
+          ],
+          "violated_requirements": [],
+          "reason": "The transcript has no turns, so the obligation was not met."
+        }
+      ]
+    },
+    "4": {
+      "status": "not_reached",
+      "applicability": "not_applicable",
+      "score": null,
+      "evidence_turns": [],
+      "missing_requirements": [],
+      "violated_requirements": [],
+      "explanation": "The conversation ended before this step.",
+      "criteria": []
+    },
+    "5": {
+      "status": "not_reached",
+      "applicability": "applicable",
+      "score": null,
+      "evidence_turns": [],
+      "missing_requirements": [
+        "5.summarize_details",
+        "5.offer_optional_reminders",
+        "5.thank_you_close",
+        "5.further_help_question"
+      ],
+      "violated_requirements": [],
+      "explanation": "The conversation ended before this step.",
+      "criteria": [
+        {
+          "id": "5.summarize_details",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "5.summarize_details"
+          ],
+          "violated_requirements": [],
+          "reason": "The transcript has no turns, so the obligation was not met."
+        },
+        {
+          "id": "5.offer_optional_reminders",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "5.offer_optional_reminders"
+          ],
+          "violated_requirements": [],
+          "reason": "The transcript has no turns, so the obligation was not met."
+        },
+        {
+          "id": "5.thank_you_close",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "5.thank_you_close"
+          ],
+          "violated_requirements": [],
+          "reason": "The transcript has no turns, so the obligation was not met."
+        },
+        {
+          "id": "5.further_help_question",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "5.further_help_question"
+          ],
+          "violated_requirements": [],
+          "reason": "The transcript has no turns, so the obligation was not met."
+        }
+      ]
+    }
+  },
+  "deviations": [
+    {
+      "kind": "missing_requirement",
+      "node_id": "1",
+      "criterion": "1.organization_greeting",
+      "source": null,
+      "target": null,
+      "reason": "The transcript has no turns, so the obligation was not met."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "1",
+      "criterion": "1.speaker_identity",
+      "source": null,
+      "target": null,
+      "reason": "The transcript has no turns, so the obligation was not met."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "1",
+      "criterion": "1.help_offer",
+      "source": null,
+      "target": null,
+      "reason": "The transcript has no turns, so the obligation was not met."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "2",
+      "criterion": "2.identify_appointment_type",
+      "source": null,
+      "target": null,
+      "reason": "The transcript has no turns, so the obligation was not met."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "2",
+      "criterion": "2.provider_preference",
+      "source": null,
+      "target": null,
+      "reason": "The transcript has no turns, so the obligation was not met."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "2",
+      "criterion": "2.new_or_returning",
+      "source": null,
+      "target": null,
+      "reason": "The transcript has no turns, so the obligation was not met."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "2",
+      "criterion": "2.urgency_of_issue",
+      "source": null,
+      "target": null,
+      "reason": "The transcript has no turns, so the obligation was not met."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "3",
+      "criterion": "3.patient_information",
+      "source": null,
+      "target": null,
+      "reason": "The transcript has no turns, so the obligation was not met."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "3",
+      "criterion": "3.full_name",
+      "source": null,
+      "target": null,
+      "reason": "The transcript has no turns, so the obligation was not met."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "3",
+      "criterion": "3.dob",
+      "source": null,
+      "target": null,
+      "reason": "The transcript has no turns, so the obligation was not met."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "3",
+      "criterion": "3.offer_appointment_times",
+      "source": null,
+      "target": null,
+      "reason": "The transcript has no turns, so the obligation was not met."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "3",
+      "criterion": "3.accept_appointment_time",
+      "source": null,
+      "target": null,
+      "reason": "The transcript has no turns, so the obligation was not met."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "3",
+      "criterion": "3.confirm_appointment_time",
+      "source": null,
+      "target": null,
+      "reason": "The transcript has no turns, so the obligation was not met."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "3",
+      "criterion": "3.provide_preparation_instructions",
+      "source": null,
+      "target": null,
+      "reason": "The transcript has no turns, so the obligation was not met."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "5",
+      "criterion": "5.summarize_details",
+      "source": null,
+      "target": null,
+      "reason": "The transcript has no turns, so the obligation was not met."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "5",
+      "criterion": "5.offer_optional_reminders",
+      "source": null,
+      "target": null,
+      "reason": "The transcript has no turns, so the obligation was not met."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "5",
+      "criterion": "5.thank_you_close",
+      "source": null,
+      "target": null,
+      "reason": "The transcript has no turns, so the obligation was not met."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "5",
+      "criterion": "5.further_help_question",
+      "source": null,
+      "target": null,
+      "reason": "The transcript has no turns, so the obligation was not met."
+    }
+  ],
+  "uncertainty": [
+    {
+      "kind": "evidence",
+      "node_id": "3",
+      "criterion": "3.new_patients",
+      "source": null,
+      "target": null,
+      "reason": "The transcript has no turns, so whether this obligation applies is unsettled."
+    },
+    {
+      "kind": "evidence",
+      "node_id": "3",
+      "criterion": "3.returning_patients",
+      "source": null,
+      "target": null,
+      "reason": "The transcript has no turns, so whether this obligation applies is unsettled."
+    },
+    {
+      "kind": "evidence",
+      "node_id": "3",
+      "criterion": "3.contact_number",
+      "source": null,
+      "target": null,
+      "reason": "The transcript has no turns, so whether this obligation applies is unsettled."
+    }
+  ]
+}

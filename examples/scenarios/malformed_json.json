@@ -1,0 +1,7 @@
+{
+  "error": {
+    "outcome": "input_error",
+    "code": "malformed_json",
+    "message": "Graph file is not valid JSON: Expecting property name enclosed in double quotes."
+  }
+}

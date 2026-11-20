@@ -1,0 +1,394 @@
+{
+  "overall": {
+    "adherence_score": 100.00,
+    "verdict": "incomplete",
+    "path_validity": "incomplete"
+  },
+  "expected_path": [
+    "1",
+    "2",
+    "3",
+    "5"
+  ],
+  "observed_path": [
+    "1"
+  ],
+  "transitions": [],
+  "node_results": {
+    "1": {
+      "status": "completed",
+      "applicability": "applicable",
+      "score": 1,
+      "evidence_turns": [
+        1,
+        5
+      ],
+      "missing_requirements": [],
+      "violated_requirements": [],
+      "explanation": "All 3 applicable requirements were met.",
+      "criteria": [
+        {
+          "id": "1.organization_greeting",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            1,
+            5
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The assistant thanks the caller for contacting NexaCare in turn 1: 'Thank you for calling NexaCare.' This satisfies the obligation to express gratitude for contacting NexaCare."
+        },
+        {
+          "id": "1.speaker_identity",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            1
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The assistant identifies themselves as Riley, the scheduling assistant, in turn 1: 'This is Riley, your scheduling assistant.' This meets the requirement."
+        },
+        {
+          "id": "1.help_offer",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            1
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The assistant offers help in turn 1: 'How may I help you today?' This satisfies the obligation to offer assistance."
+        }
+      ]
+    },
+    "2": {
+      "status": "not_reached",
+      "applicability": "applicable",
+      "score": null,
+      "evidence_turns": [],
+      "missing_requirements": [
+        "2.identify_appointment_type",
+        "2.provider_preference",
+        "2.new_or_returning",
+        "2.urgency_of_issue"
+      ],
+      "violated_requirements": [],
+      "explanation": "The conversation ended before this step.",
+      "criteria": [
+        {
+          "id": "2.identify_appointment_type",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "2.identify_appointment_type"
+          ],
+          "violated_requirements": [],
+          "reason": "The assistant explains the process in turn 3 but does not actually determine what type of appointment the caller needs. No direct question or determination is made."
+        },
+        {
+          "id": "2.provider_preference",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "2.provider_preference"
+          ],
+          "violated_requirements": [],
+          "reason": "The assistant describes the general process but does not ask about provider preference or determine if the caller has one."
+        },
+        {
+          "id": "2.new_or_returning",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "2.new_or_returning"
+          ],
+          "violated_requirements": [],
+          "reason": "The assistant mentions collecting information but does not determine whether the patient is new or returning."
+        },
+        {
+          "id": "2.urgency_of_issue",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "2.urgency_of_issue"
+          ],
+          "violated_requirements": [],
+          "reason": "The assistant does not ask about the urgency of the issue or determine it in any way."
+        }
+      ]
+    },
+    "3": {
+      "status": "not_reached",
+      "applicability": "applicable",
+      "score": null,
+      "evidence_turns": [],
+      "missing_requirements": [
+        "3.full_name",
+        "3.dob",
+        "3.offer_appointment_times",
+        "3.acceptance",
+        "3.confirmation",
+        "3.preparation_instructions"
+      ],
+      "violated_requirements": [],
+      "explanation": "The conversation ended before this step.",
+      "criteria": [
+        {
+          "id": "3.patient_information",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "3.full_name",
+            "3.dob"
+          ],
+          "violated_requirements": [],
+          "reason": "The assistant describes that they collect name and date of birth but does not actually collect any patient information from the caller."
+        },
+        {
+          "id": "3.offer_appointment_times",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "3.offer_appointment_times"
+          ],
+          "violated_requirements": [],
+          "reason": "The assistant explains that they offer a time but does not actually present any available appointment times to the caller."
+        },
+        {
+          "id": "3.acceptance",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "3.acceptance"
+          ],
+          "violated_requirements": [],
+          "reason": "No appointment time is offered, so there is no opportunity for the caller to accept an appointment time."
+        },
+        {
+          "id": "3.confirmation",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "3.confirmation"
+          ],
+          "violated_requirements": [],
+          "reason": "No appointment time is agreed upon, so there is nothing to confirm."
+        },
+        {
+          "id": "3.preparation_instructions",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "3.preparation_instructions"
+          ],
+          "violated_requirements": [],
+          "reason": "No appointment is scheduled, so no preparation instructions are provided."
+        }
+      ]
+    },
+    "4": {
+      "status": "not_reached",
+      "applicability": "not_applicable",
+      "score": null,
+      "evidence_turns": [],
+      "missing_requirements": [],
+      "violated_requirements": [],
+      "explanation": "The conversation ended before this step.",
+      "criteria": []
+    },
+    "5": {
+      "status": "not_reached",
+      "applicability": "applicable",
+      "score": null,
+      "evidence_turns": [],
+      "missing_requirements": [
+        "5.summarize_details",
+        "5.offer_reminders",
+        "5.thank_you_close",
+        "5.further_help"
+      ],
+      "violated_requirements": [],
+      "explanation": "The conversation ended before this step.",
+      "criteria": [
+        {
+          "id": "5.summarize_details",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "5.summarize_details"
+          ],
+          "violated_requirements": [],
+          "reason": "No appointment is scheduled, so there are no details to summarize."
+        },
+        {
+          "id": "5.offer_reminders",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "5.offer_reminders"
+          ],
+          "violated_requirements": [],
+          "reason": "No appointment is scheduled, so there is no offer of reminders."
+        },
+        {
+          "id": "5.thank_you_close",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "5.thank_you_close"
+          ],
+          "violated_requirements": [],
+          "reason": "The assistant thanks the caller for calling NexaCare, but does not thank them for scheduling, as no appointment was scheduled."
+        },
+        {
+          "id": "5.further_help",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "5.further_help"
+          ],
+          "violated_requirements": [],
+          "reason": "The assistant does not ask if the caller needs any further assistance."
+        }
+      ]
+    }
+  },
+  "deviations": [
+    {
+      "kind": "missing_requirement",
+      "node_id": "2",
+      "criterion": "2.identify_appointment_type",
+      "source": null,
+      "target": null,
+      "reason": "The assistant explains the process in turn 3 but does not actually determine what type of appointment the caller needs. No direct question or determination is made."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "2",
+      "criterion": "2.provider_preference",
+      "source": null,
+      "target": null,
+      "reason": "The assistant describes the general process but does not ask about provider preference or determine if the caller has one."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "2",
+      "criterion": "2.new_or_returning",
+      "source": null,
+      "target": null,
+      "reason": "The assistant mentions collecting information but does not determine whether the patient is new or returning."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "2",
+      "criterion": "2.urgency_of_issue",
+      "source": null,
+      "target": null,
+      "reason": "The assistant does not ask about the urgency of the issue or determine it in any way."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "3",
+      "criterion": "3.patient_information",
+      "source": null,
+      "target": null,
+      "reason": "The assistant describes that they collect name and date of birth but does not actually collect any patient information from the caller."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "3",
+      "criterion": "3.full_name",
+      "source": null,
+      "target": null,
+      "reason": "The assistant mentions that they collect a name but does not actually request the patient's full name from the caller."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "3",
+      "criterion": "3.dob",
+      "source": null,
+      "target": null,
+      "reason": "The assistant mentions that they collect date of birth but does not actually request it from the caller."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "3",
+      "criterion": "3.offer_appointment_times",
+      "source": null,
+      "target": null,
+      "reason": "The assistant explains that they offer a time but does not actually present any available appointment times to the caller."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "3",
+      "criterion": "3.acceptance",
+      "source": null,
+      "target": null,
+      "reason": "No appointment time is offered, so there is no opportunity for the caller to accept an appointment time."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "3",
+      "criterion": "3.confirmation",
+      "source": null,
+      "target": null,
+      "reason": "No appointment time is agreed upon, so there is nothing to confirm."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "3",
+      "criterion": "3.preparation_instructions",
+      "source": null,
+      "target": null,
+      "reason": "No appointment is scheduled, so no preparation instructions are provided."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "5",
+      "criterion": "5.summarize_details",
+      "source": null,
+      "target": null,
+      "reason": "No appointment is scheduled, so there are no details to summarize."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "5",
+      "criterion": "5.offer_reminders",
+      "source": null,
+      "target": null,
+      "reason": "No appointment is scheduled, so there is no offer of reminders."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "5",
+      "criterion": "5.thank_you_close",
+      "source": null,
+      "target": null,
+      "reason": "The assistant thanks the caller for calling NexaCare, but does not thank them for scheduling, as no appointment was scheduled."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "5",
+      "criterion": "5.further_help",
+      "source": null,
+      "target": null,
+      "reason": "The assistant does not ask if the caller needs any further assistance."
+    }
+  ],
+  "uncertainty": []
+}

@@ -1,0 +1,7 @@
+{
+  "error": {
+    "outcome": "unsupported",
+    "code": "unsupported_graph",
+    "message": "Workflow contains a cycle."
+  }
+}

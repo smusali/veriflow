@@ -132,7 +132,7 @@
       "category": "scheduling",
       "basis": "requirement",
       "workflow_fixture": "assignment_graph.json",
-      "transcript_fixture": "scenarios/C01.json",
+      "transcript_fixture": "scenarios/returning_patient_transcript.json",
       "expected": {
         "outcome": "evaluated",
         "node_statuses": {
@@ -187,7 +187,7 @@
       "category": "scheduling",
       "basis": "requirement",
       "workflow_fixture": "assignment_graph.json",
-      "transcript_fixture": "scenarios/C04.json",
+      "transcript_fixture": "scenarios/unavailable_slot_accepted_transcript.json",
       "expected": {
         "outcome": "evaluated",
         "node_statuses": {
@@ -325,7 +325,7 @@
         "verdict"
       ],
       "workflow_fixture": "assignment_graph.json",
-      "transcript_fixture": "scenarios/C12.json",
+      "transcript_fixture": "scenarios/procedure_explanation_transcript.json",
       "expected": {
         "outcome": "evaluated",
         "node_statuses": {
@@ -518,7 +518,7 @@
       "category": "traversal",
       "basis": "requirement",
       "workflow_fixture": "assignment_graph.json",
-      "transcript_fixture": "scenarios/C25.json",
+      "transcript_fixture": "scenarios/omitted_appointment_determination_transcript.json",
       "expected": {
         "outcome": "evaluated",
         "node_statuses": {
@@ -722,7 +722,7 @@
       "title": "Malformed JSON",
       "category": "input",
       "basis": "requirement",
-      "workflow_fixture": "scenarios/C38.txt",
+      "workflow_fixture": "scenarios/malformed_json.txt",
       "transcript_fixture": null,
       "expected": {
         "outcome": "input_error",
@@ -774,7 +774,7 @@
       "category": "input",
       "basis": "requirement",
       "workflow_fixture": "assignment_graph.json",
-      "transcript_fixture": "scenarios/C42.json",
+      "transcript_fixture": "scenarios/overlapping_intervals_transcript.json",
       "expected": {
         "outcome": "accepted"
       }
@@ -797,8 +797,8 @@
       "title": "Duplicate node ids",
       "category": "input",
       "basis": "requirement",
-      "workflow_fixture": "scenarios/C44_graph.json",
-      "transcript_fixture": "scenarios/C01.json",
+      "workflow_fixture": "scenarios/duplicate_node_ids_graph.json",
+      "transcript_fixture": "scenarios/returning_patient_transcript.json",
       "expected": {
         "outcome": "input_error",
         "error": "duplicate_node_id"
@@ -823,7 +823,7 @@
       "category": "input",
       "basis": "requirement",
       "workflow_fixture": "assignment_graph.json",
-      "transcript_fixture": "scenarios/C46.json",
+      "transcript_fixture": "scenarios/empty_transcript.json",
       "expected": {
         "outcome": "evaluated",
         "path_validity": "incomplete",
@@ -836,8 +836,8 @@
       "title": "Cyclic or multi-start graph",
       "category": "input",
       "basis": "requirement",
-      "workflow_fixture": "scenarios/C47_graph.json",
-      "transcript_fixture": "scenarios/C01.json",
+      "workflow_fixture": "scenarios/cyclic_graph.json",
+      "transcript_fixture": "scenarios/returning_patient_transcript.json",
       "expected": {
         "outcome": "unsupported",
         "error": "unsupported_graph"

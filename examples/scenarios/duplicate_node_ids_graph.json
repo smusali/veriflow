@@ -1,0 +1,7 @@
+{
+  "error": {
+    "outcome": "input_error",
+    "code": "duplicate_node_id",
+    "message": "nodes[1].id '1' duplicates nodes[0].id."
+  }
+}

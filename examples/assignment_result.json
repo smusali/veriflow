@@ -1,0 +1,306 @@
+{
+  "overall": {
+    "adherence_score": 93.75,
+    "verdict": "partial",
+    "path_validity": "valid"
+  },
+  "expected_path": [
+    "1",
+    "2",
+    "3",
+    "5"
+  ],
+  "observed_path": [
+    "1",
+    "2",
+    "3",
+    "5"
+  ],
+  "transitions": [
+    {
+      "source": "1",
+      "target": "2",
+      "assessment": "permitted"
+    },
+    {
+      "source": "2",
+      "target": "3",
+      "assessment": "permitted"
+    },
+    {
+      "source": "3",
+      "target": "5",
+      "assessment": "permitted"
+    }
+  ],
+  "node_results": {
+    "1": {
+      "status": "completed",
+      "applicability": "applicable",
+      "score": 1,
+      "evidence_turns": [
+        1
+      ],
+      "missing_requirements": [],
+      "violated_requirements": [],
+      "explanation": "All 3 applicable requirements were met.",
+      "criteria": [
+        {
+          "id": "1.organization_greeting",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            1
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The assistant thanks the caller for contacting NexaCare in turn 1: 'Thank you for calling NexaCare.' This satisfies the obligation."
+        },
+        {
+          "id": "1.speaker_identity",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            1
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The assistant identifies themselves as Riley, the scheduling assistant, in turn 1: 'This is Riley, your scheduling assistant.'"
+        },
+        {
+          "id": "1.help_offer",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            1
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The assistant offers help in turn 1: 'How may I help you today?' This is a clear offer of assistance."
+        }
+      ]
+    },
+    "2": {
+      "status": "partial",
+      "applicability": "applicable",
+      "score": 0.75,
+      "evidence_turns": [
+        12,
+        13,
+        15,
+        16,
+        17
+      ],
+      "missing_requirements": [
+        "2.urgency_of_issue"
+      ],
+      "violated_requirements": [],
+      "explanation": "3 of 4 applicable requirements were met. Missing: 2.urgency_of_issue.",
+      "criteria": [
+        {
+          "id": "2.identify_appointment_type",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            12,
+            13
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The assistant determines the type of appointment in turn 13 by confirming 'A general checkup' after the caller states it in turn 12."
+        },
+        {
+          "id": "2.provider_preference",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            13
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The assistant asks if the caller has a provider preference in turn 13: 'Do you have a preference for a specific provider, or should I find the first available appointment for you?'"
+        },
+        {
+          "id": "2.new_or_returning",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            15,
+            16,
+            17
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The assistant asks if the patient is new or returning in turn 15, and confirms in turn 17 after the caller's response in turn 16."
+        },
+        {
+          "id": "2.urgency_of_issue",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "2.urgency_of_issue"
+          ],
+          "violated_requirements": [],
+          "reason": "At no point does the assistant ask about the urgency of the issue. The type of appointment is established, but urgency is not addressed or inquired about."
+        }
+      ]
+    },
+    "3": {
+      "status": "completed",
+      "applicability": "applicable",
+      "score": 1,
+      "evidence_turns": [
+        17,
+        18,
+        19,
+        20,
+        21
+      ],
+      "missing_requirements": [],
+      "violated_requirements": [],
+      "explanation": "All 5 applicable requirements were met.",
+      "criteria": [
+        {
+          "id": "3.patient_information_aggregate",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            17,
+            18
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The assistant requests the appropriate information for a returning patient (full name and date of birth) in turn 17, and the caller provides it in turn 18."
+        },
+        {
+          "id": "3.offer_appointment_times",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            19
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The assistant offers an available appointment time in turn 19: 'I see an available slot with Doctor Emily Carter on Tuesday, November fourteenth, at 10 AM. Does that work for you?'"
+        },
+        {
+          "id": "3.acceptance_of_appointment_time",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            20
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The caller accepts the appointment time in turn 20: 'Tuesday morning works. Go ahead with that.'"
+        },
+        {
+          "id": "3.confirm_appointment_time",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            21
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The assistant confirms the agreed appointment time in turn 21: 'Your appointment is scheduled with Doctor Emily Carter on Tuesday, November fourteenth at 10 AM.'"
+        },
+        {
+          "id": "3.provide_preparation_instructions",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            21
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The assistant provides preparation instructions in turn 21: 'Please arrive 15 minutes early to complete any necessary paperwork.'"
+        }
+      ]
+    },
+    "4": {
+      "status": "not_applicable",
+      "applicability": "not_applicable",
+      "score": null,
+      "evidence_turns": [],
+      "missing_requirements": [],
+      "violated_requirements": [],
+      "explanation": "No triggering condition for this step occurred.",
+      "criteria": []
+    },
+    "5": {
+      "status": "completed",
+      "applicability": "applicable",
+      "score": 1,
+      "evidence_turns": [
+        9,
+        11,
+        21,
+        23
+      ],
+      "missing_requirements": [],
+      "violated_requirements": [],
+      "explanation": "All 4 applicable requirements were met.",
+      "criteria": [
+        {
+          "id": "5.summarize_details",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            21
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The assistant summarizes the appointment details in turn 21: 'Your appointment is scheduled with Doctor Emily Carter on Tuesday, November fourteenth at 10 AM. Please arrive 15 minutes early to complete any necessary paperwork. We'll send you a reminder closer to the date.'"
+        },
+        {
+          "id": "5.offer_optional_reminders",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            9,
+            11,
+            21
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The assistant mentions offering reminders in turn 9 and 11, and confirms in turn 21: 'We'll send you a reminder closer to the date.' This satisfies the offer of optional reminders."
+        },
+        {
+          "id": "5.thank_you_close",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            23
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The assistant thanks the caller for scheduling with NexaCare in turn 23: 'Thank you for scheduling with NexaCare.'"
+        },
+        {
+          "id": "5.further_help_question",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            21
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The assistant asks if there is anything else they can help with in turn 21: 'Is there anything else I can help you with today?'"
+        }
+      ]
+    }
+  },
+  "deviations": [
+    {
+      "kind": "missing_requirement",
+      "node_id": "2",
+      "criterion": "2.urgency_of_issue",
+      "source": null,
+      "target": null,
+      "reason": "At no point does the assistant ask about the urgency of the issue. The type of appointment is established, but urgency is not addressed or inquired about."
+    }
+  ],
+  "uncertainty": []
+}

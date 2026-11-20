@@ -1,0 +1,349 @@
+{
+  "overall": {
+    "adherence_score": 63.75,
+    "verdict": "incomplete",
+    "path_validity": "incomplete"
+  },
+  "expected_path": [
+    "1",
+    "2",
+    "3",
+    "5"
+  ],
+  "observed_path": [
+    "1"
+  ],
+  "transitions": [],
+  "node_results": {
+    "1": {
+      "status": "completed",
+      "applicability": "applicable",
+      "score": 1,
+      "evidence_turns": [
+        1
+      ],
+      "missing_requirements": [],
+      "violated_requirements": [],
+      "explanation": "All 3 applicable requirements were met.",
+      "criteria": [
+        {
+          "id": "1.organization_greeting",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            1
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The assistant thanks the caller for contacting NexaCare in turn 1: 'Thank you for calling NexaCare.' This satisfies the obligation."
+        },
+        {
+          "id": "1.speaker_identity",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            1
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The assistant identifies themselves as Riley, the scheduling assistant, in turn 1: 'This is Riley, your scheduling assistant.' This meets the requirement."
+        },
+        {
+          "id": "1.help_offer",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            1
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The assistant offers help in turn 1: 'How may I help you today?' This satisfies the obligation."
+        }
+      ]
+    },
+    "2": {
+      "status": "partial",
+      "applicability": "applicable",
+      "score": 0,
+      "evidence_turns": [
+        2,
+        3
+      ],
+      "missing_requirements": [
+        "2.identify_appointment_type",
+        "2.provider_preference",
+        "2.new_or_returning",
+        "2.urgency_of_issue"
+      ],
+      "violated_requirements": [],
+      "explanation": "0 of 4 applicable requirements were met. Missing: 2.identify_appointment_type, 2.provider_preference, 2.new_or_returning, 2.urgency_of_issue.",
+      "criteria": [
+        {
+          "id": "2.identify_appointment_type",
+          "applicability": "applicable",
+          "result": "insufficient",
+          "evidence_turns": [
+            2,
+            3
+          ],
+          "missing_requirements": [
+            "2.identify_appointment_type"
+          ],
+          "violated_requirements": [],
+          "reason": "The user requests to 'book something,' but the assistant does not clarify or determine the type of appointment needed. No explicit question or clarification about appointment type is made."
+        },
+        {
+          "id": "2.provider_preference",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "2.provider_preference"
+          ],
+          "violated_requirements": [],
+          "reason": "The assistant offers an appointment with Doctor Emily Carter without asking if the caller has a preferred provider."
+        },
+        {
+          "id": "2.new_or_returning",
+          "applicability": "applicable",
+          "result": "insufficient",
+          "evidence_turns": [
+            3
+          ],
+          "missing_requirements": [
+            "2.new_or_returning"
+          ],
+          "violated_requirements": [],
+          "reason": "The assistant asks for full name and date of birth, which could be for either new or returning patients, but does not explicitly determine or ask if the patient is new or returning."
+        },
+        {
+          "id": "2.urgency_of_issue",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "2.urgency_of_issue"
+          ],
+          "violated_requirements": [],
+          "reason": "The assistant does not ask about the urgency of the patient's issue at any point in the transcript."
+        }
+      ]
+    },
+    "3": {
+      "status": "partial",
+      "applicability": "applicable",
+      "score": 0.8,
+      "evidence_turns": [
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "missing_requirements": [
+        "3.patient_information"
+      ],
+      "violated_requirements": [],
+      "explanation": "4 of 5 applicable requirements were met. Missing: 3.patient_information.",
+      "criteria": [
+        {
+          "id": "3.patient_information",
+          "applicability": "applicable",
+          "result": "insufficient",
+          "evidence_turns": [
+            3,
+            4
+          ],
+          "missing_requirements": [
+            "3.patient_information"
+          ],
+          "violated_requirements": [],
+          "reason": "The assistant requests full name and date of birth in turn 3, and the user provides them in turn 4. This satisfies the general requirement to collect required patient information."
+        },
+        {
+          "id": "3.offer_appointment_times",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            5
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The assistant offers an appointment time in turn 5: 'I can offer Tuesday, November 14 at 10 AM with Doctor Emily Carter. Does that work?' This meets the requirement."
+        },
+        {
+          "id": "3.acceptance_of_appointment_time",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            6
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The user accepts the offered appointment time in turn 6: 'Yes, that works.' This satisfies the requirement."
+        },
+        {
+          "id": "3.confirm_appointment_time",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            7
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The assistant confirms the appointment time in turn 7: 'You are confirmed with Doctor Emily Carter on Tuesday, November 14 at 10 AM.' This meets the requirement."
+        },
+        {
+          "id": "3.provide_preparation_instructions",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            7
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The assistant provides preparation instructions in turn 7: 'Please arrive 15 minutes early.' This satisfies the requirement."
+        }
+      ]
+    },
+    "4": {
+      "status": "not_reached",
+      "applicability": "not_applicable",
+      "score": null,
+      "evidence_turns": [],
+      "missing_requirements": [],
+      "violated_requirements": [],
+      "explanation": "The conversation ended before this step.",
+      "criteria": []
+    },
+    "5": {
+      "status": "partial",
+      "applicability": "applicable",
+      "score": 0.75,
+      "evidence_turns": [
+        7,
+        8,
+        10
+      ],
+      "missing_requirements": [
+        "5.offer_optional_reminders"
+      ],
+      "violated_requirements": [],
+      "explanation": "3 of 4 applicable requirements were met. Missing: 5.offer_optional_reminders.",
+      "criteria": [
+        {
+          "id": "5.summarize_details",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            7
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The assistant summarizes the appointment details in turn 7: 'You are confirmed with Doctor Emily Carter on Tuesday, November 14 at 10 AM.' This meets the requirement."
+        },
+        {
+          "id": "5.offer_optional_reminders",
+          "applicability": "applicable",
+          "result": "unmet",
+          "evidence_turns": [],
+          "missing_requirements": [
+            "5.offer_optional_reminders"
+          ],
+          "violated_requirements": [],
+          "reason": "The assistant asks if there is anything else they can help with, but does not offer optional reminders about the appointment."
+        },
+        {
+          "id": "5.thank_you_close",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            10
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The assistant thanks the caller for scheduling with NexaCare in turn 10: 'Thank you for scheduling with NexaCare.' This meets the requirement."
+        },
+        {
+          "id": "5.further_help_question",
+          "applicability": "applicable",
+          "result": "met",
+          "evidence_turns": [
+            8
+          ],
+          "missing_requirements": [],
+          "violated_requirements": [],
+          "reason": "The assistant asks if there is anything else they can help with in turn 8: 'Is there anything else I can help with today?' This satisfies the requirement."
+        }
+      ]
+    }
+  },
+  "deviations": [
+    {
+      "kind": "missing_requirement",
+      "node_id": "2",
+      "criterion": "2.provider_preference",
+      "source": null,
+      "target": null,
+      "reason": "The assistant offers an appointment with Doctor Emily Carter without asking if the caller has a preferred provider."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "2",
+      "criterion": "2.urgency_of_issue",
+      "source": null,
+      "target": null,
+      "reason": "The assistant does not ask about the urgency of the patient's issue at any point in the transcript."
+    },
+    {
+      "kind": "missing_requirement",
+      "node_id": "5",
+      "criterion": "5.offer_optional_reminders",
+      "source": null,
+      "target": null,
+      "reason": "The assistant asks if there is anything else they can help with, but does not offer optional reminders about the appointment."
+    }
+  ],
+  "uncertainty": [
+    {
+      "kind": "evidence",
+      "node_id": "2",
+      "criterion": "2.identify_appointment_type",
+      "source": null,
+      "target": null,
+      "reason": "The user requests to 'book something,' but the assistant does not clarify or determine the type of appointment needed. No explicit question or clarification about appointment type is made."
+    },
+    {
+      "kind": "evidence",
+      "node_id": "2",
+      "criterion": "2.new_or_returning",
+      "source": null,
+      "target": null,
+      "reason": "The assistant asks for full name and date of birth, which could be for either new or returning patients, but does not explicitly determine or ask if the patient is new or returning."
+    },
+    {
+      "kind": "evidence",
+      "node_id": "3",
+      "criterion": "3.new_patients",
+      "source": null,
+      "target": null,
+      "reason": "It is not established whether the patient is new. The assistant does not ask, and the user does not state this. Therefore, it is uncertain if this obligation applies."
+    },
+    {
+      "kind": "evidence",
+      "node_id": "3",
+      "criterion": "3.returning_patients",
+      "source": null,
+      "target": null,
+      "reason": "It is not established whether the patient is returning. The assistant does not ask, and the user does not state this. Therefore, it is uncertain if this obligation applies."
+    },
+    {
+      "kind": "evidence",
+      "node_id": "3",
+      "criterion": "3.contact_number",
+      "source": null,
+      "target": null,
+      "reason": "It is not established whether the patient is new. The assistant does not ask for a contact number, and the user's status as new or returning is not determined."
+    }
+  ]
+}

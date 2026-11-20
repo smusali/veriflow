@@ -1,24 +1,20 @@
 """Print the adherence score for the assignment transcript."""
 
-import os
-import sys
 from decimal import Decimal
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+from common import GRAPH, TRANSCRIPT
 
-from dotenv import load_dotenv
-
+from src.evidence import extract_evidence
 from src.inputs import load_transcript, load_workflow
-from src.judge import build_rubric, extract_evidence, openai_completer
-from src.verifier import classify_nodes, score_adherence, verify_traversal
+from src.nodes import classify_nodes
+from src.openai import openai_completer
+from src.rubric import build_rubric
+from src.score import score_adherence
+from src.traversal import verify_traversal
 
-load_dotenv(ROOT / ".env")
-
-workflow = load_workflow(ROOT / "fixtures/assignment_graph.json")
-transcript = load_transcript(ROOT / "fixtures/assignment_transcript.json")
-completer = openai_completer(os.environ["OPENAI_API_KEY"], os.environ["OPENAI_MODEL"])
+workflow = load_workflow(GRAPH)
+transcript = load_transcript(TRANSCRIPT)
+completer = openai_completer()
 rubric = build_rubric(workflow, completer)
 evidence = extract_evidence(transcript, rubric, completer)
 evaluation = classify_nodes(workflow, rubric, evidence, transcript)

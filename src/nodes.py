@@ -1,155 +1,30 @@
-"""Classify each workflow node and check the observed stage progression.
-
-The evidence judge decides what the transcript supports, including which
-assistant actions enter a stage. This module decides, in a fixed order,
-whether a node applied, and whether that progression follows the directed graph.
-It then scores criterion completion and permitted progression, and assigns a verdict.
-"""
+"""Classify each workflow node from rubric findings."""
 
 from __future__ import annotations
 
 from collections import deque
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from decimal import ROUND_HALF_UP, Decimal
-from enum import StrEnum
 from types import MappingProxyType
 
+from .errors import JudgeCode, fail_judge as fail
 from .inputs import Transcript, Workflow
-from .judge import (
+from .models import (
     Applicability,
+    AttemptState,
     Criterion,
+    CriterionAssessment,
     CriterionFinding,
     Evidence,
     FindingResult,
-    JudgeCode,
+    NodeEvaluation,
+    NodeResult,
+    NodeStatus,
     RequirementType,
     Rubric,
     StageEvent,
     Subrequirement,
-    fail,
 )
-
-
-class NodeStatus(StrEnum):
-    COMPLETED = "completed"
-    PARTIAL = "partial"
-    INCORRECT = "incorrect"
-    SKIPPED = "skipped"
-    NOT_APPLICABLE = "not_applicable"
-    NOT_REACHED = "not_reached"
-
-
-class AttemptState(StrEnum):
-    ATTEMPTED = "attempted"
-    NOT_ATTEMPTED = "not_attempted"
-
-
-class PathValidity(StrEnum):
-    VALID = "valid"
-    INVALID = "invalid"
-    INCOMPLETE = "incomplete"
-    INDETERMINATE = "indeterminate"
-
-
-class TransitionAssessment(StrEnum):
-    PERMITTED = "permitted"
-    INVALID = "invalid"
-    UNRESOLVED = "unresolved"
-
-
-class Verdict(StrEnum):
-    COMPLETED = "completed"
-    PARTIAL = "partial"
-    FAILED = "failed"
-    INCOMPLETE = "incomplete"
-    INDETERMINATE = "indeterminate"
-
-
-@dataclass(frozen=True, slots=True)
-class CriterionAssessment:
-    """One top-level criterion after its subrequirements are folded in."""
-
-    criterion_id: str
-    applicability: Applicability
-    result: FindingResult
-    satisfied: bool
-    in_denominator: bool
-    established: bool
-    unresolved: bool
-    evidence_turns: tuple[int, ...]
-    open_turns: tuple[int, ...]
-    missing_ids: tuple[str, ...]
-    violated_ids: tuple[str, ...]
-
-
-@dataclass(frozen=True, slots=True)
-class NodeResult:
-    node_id: str
-    applicability: Applicability
-    attempted: AttemptState
-    criteria: tuple[CriterionAssessment, ...]
-    status: NodeStatus
-    evidence_turns: tuple[int, ...]
-    missing_requirements: tuple[str, ...]
-    violated_requirements: tuple[str, ...]
-    satisfied_count: int
-    applicable_count: int
-    explanation: str
-
-
-@dataclass(frozen=True, slots=True)
-class NodeEvaluation:
-    results: tuple[NodeResult, ...]
-    by_id: Mapping[str, NodeResult]
-
-
-@dataclass(frozen=True, slots=True)
-class ObservedTransition:
-    source: str
-    target: str
-    assessment: TransitionAssessment
-
-
-@dataclass(frozen=True, slots=True)
-class Traversal:
-    """Every start-to-end path, and the one path the established branch selects.
-
-    order_tied is true when two stage actions share a turn and offset.
-    """
-
-    candidate_paths: tuple[tuple[str, ...], ...]
-    expected_path: tuple[str, ...] | None
-    observed_path: tuple[str, ...]
-    transitions: tuple[ObservedTransition, ...]
-    omitted_nodes: tuple[str, ...]
-    unreached_nodes: tuple[str, ...]
-    validity: PathValidity
-    complete: bool
-    order_tied: bool
-
-
-@dataclass(frozen=True, slots=True)
-class NodeScore:
-    node_id: str
-    score: Decimal | None
-
-
-@dataclass(frozen=True, slots=True)
-class Adherence:
-    nodes: tuple[NodeScore, ...]
-    node_average: Decimal | None
-    transition_score: Decimal
-    adherence_score: Decimal | None
-    verdict: Verdict
-
-
-@dataclass(frozen=True, slots=True)
-class _Fold:
-    observed: tuple[str, ...]
-    transitions: tuple[ObservedTransition, ...]
-    tied: bool
-
 
 @dataclass(frozen=True, slots=True)
 class _Scope:
@@ -371,7 +246,7 @@ def _predecessors(workflow: Workflow) -> Mapping[str, tuple[str, ...]]:
     return MappingProxyType({node_id: tuple(sources) for node_id, sources in buckets.items()})
 
 
-def _descendants(outgoing: Mapping[str, tuple[str, ...]], node_id: str) -> frozenset[str]:
+def descendants(outgoing: Mapping[str, tuple[str, ...]], node_id: str) -> frozenset[str]:
     seen: set[str] = set()
     pending: deque[str] = deque(outgoing[node_id])
     while pending:
@@ -414,7 +289,7 @@ def _scope(
 ) -> _Scope:
     last_user, assistant_turns = _turn_facts(transcript)
     descendants = {
-        node.id: _descendants(workflow.outgoing, node.id) for node in workflow.nodes
+        node.id: descendants(workflow.outgoing, node.id) for node in workflow.nodes
     }
     return _Scope(
         predecessors=_predecessors(workflow),
@@ -641,7 +516,7 @@ def _entered_before(
     return False
 
 
-def _reachable_events(workflow: Workflow, events: tuple[StageEvent, ...]) -> tuple[StageEvent, ...]:
+def reachable_events(workflow: Workflow, events: tuple[StageEvent, ...]) -> tuple[StageEvent, ...]:
     """Keep stage entries that occur after a predecessor stage has been entered."""
 
     predecessors = _predecessors(workflow)
@@ -701,7 +576,7 @@ def _ground_findings(workflow: Workflow, rubric: Rubric, evidence: Evidence) -> 
     if not conditional:
         return evidence
     predecessors = _predecessors(workflow)
-    events = _reachable_events(workflow, evidence.stage_events)
+    events = reachable_events(workflow, evidence.stage_events)
     findings: list[CriterionFinding] = []
     changed = False
     for finding in evidence.findings:
@@ -748,404 +623,4 @@ def classify_nodes(
     )
 
 
-def _complete_paths(workflow: Workflow) -> tuple[tuple[str, ...], ...]:
-    """List every simple path from the start node to an end node, in edge order."""
-
-    end_ids = frozenset(node.id for node in workflow.nodes if node.type == "end")
-    outgoing = workflow.outgoing
-    pending: list[tuple[str, tuple[str, ...]]] = [(workflow.start_id, (workflow.start_id,))]
-    found: list[tuple[str, ...]] = []
-    while pending:
-        node_id, path = pending.pop()
-        if node_id in end_ids:
-            found.append(path)
-            continue
-        for target in reversed(outgoing[node_id]):
-            if target in path:
-                continue
-            pending.append((target, (*path, target)))
-    return tuple(found)
-
-
-def _branch_nodes(paths: tuple[tuple[str, ...], ...]) -> tuple[str, ...]:
-    """Nodes that some complete path contains and another omits, in first-seen order."""
-
-    order: list[str] = []
-    seen: set[str] = set()
-    for path in paths:
-        for node_id in path:
-            if node_id in seen:
-                continue
-            seen.add(node_id)
-            order.append(node_id)
-    presence = {node_id: 0 for node_id in order}
-    total = len(paths)
-    for path in paths:
-        for node_id in set(path):
-            presence[node_id] += 1
-    return tuple(node_id for node_id in order if 0 < presence[node_id] < total)
-
-
-def _expected_path(
-    paths: tuple[tuple[str, ...], ...],
-    evaluation: NodeEvaluation,
-) -> tuple[str, ...] | None:
-    """Select the one complete path the established branch nodes allow."""
-
-    branches = _branch_nodes(paths)
-    uncertain = False
-    viable: list[tuple[str, ...]] = []
-    for path in paths:
-        path_nodes = set(path)
-        keep = True
-        for node_id in branches:
-            applicability = evaluation.by_id[node_id].applicability
-            on_path = node_id in path_nodes
-            if applicability is Applicability.UNCERTAIN:
-                uncertain = True
-                continue
-            if applicability is Applicability.APPLICABLE and not on_path:
-                keep = False
-                break
-            if applicability is Applicability.NOT_APPLICABLE and on_path:
-                keep = False
-                break
-        if keep:
-            viable.append(path)
-    if uncertain or len(viable) != 1:
-        return None
-    return viable[0]
-
-
-def _assess_transition(
-    source: str,
-    target: str,
-    workflow: Workflow,
-    expected: tuple[str, ...] | None,
-) -> TransitionAssessment:
-    if target not in workflow.outgoing[source]:
-        return TransitionAssessment.INVALID
-    if expected is None:
-        return TransitionAssessment.UNRESOLVED
-    for index, node_id in enumerate(expected):
-        if node_id != source:
-            continue
-        following = expected[index + 1] if index + 1 < len(expected) else None
-        if following == target:
-            return TransitionAssessment.PERMITTED
-        return TransitionAssessment.INVALID
-    return TransitionAssessment.INVALID
-
-
-def _ordered_events(events: tuple[StageEvent, ...]) -> tuple[tuple[StageEvent, ...], bool]:
-    """Sort by turn and offset. A shared turn and offset is an unordered tie."""
-
-    ordered = tuple(sorted(events, key=lambda event: (event.turn, event.start)))
-    for index in range(1, len(ordered)):
-        previous = ordered[index - 1]
-        current = ordered[index]
-        if (
-            previous.turn == current.turn
-            and previous.start == current.start
-            and previous.node_id != current.node_id
-        ):
-            return ordered[: index - 1], True
-    return ordered, False
-
-
-def _fold_events(
-    workflow: Workflow,
-    events: tuple[StageEvent, ...],
-    expected: tuple[str, ...] | None,
-) -> _Fold:
-    ordered, tied = _ordered_events(events)
-    end_ids = frozenset(node.id for node in workflow.nodes if node.type == "end")
-    descendants = {
-        node.id: _descendants(workflow.outgoing, node.id) for node in workflow.nodes
-    }
-    path: list[str] = []
-    transitions: list[ObservedTransition] = []
-    current: str | None = None
-    end_seen = False
-    for event in ordered:
-        node_id = event.node_id
-        if current is None:
-            path.append(node_id)
-            current = node_id
-            end_seen = node_id in end_ids
-            continue
-        # Another action in the current stage is not a new visit.
-        if node_id == current:
-            continue
-        # A return to an open ancestor, before any end node, continues that stage.
-        if node_id in path and not end_seen and current in descendants[node_id]:
-            continue
-        transitions.append(
-            ObservedTransition(
-                source=current,
-                target=node_id,
-                assessment=_assess_transition(current, node_id, workflow, expected),
-            )
-        )
-        path.append(node_id)
-        current = node_id
-        if node_id in end_ids:
-            end_seen = True
-    return _Fold(observed=tuple(path), transitions=tuple(transitions), tied=tied)
-
-
-def _is_prefix(observed: tuple[str, ...], expected: tuple[str, ...]) -> bool:
-    return expected[: len(observed)] == observed
-
-
-def _on_end(observed: tuple[str, ...], end_ids: frozenset[str]) -> bool:
-    return bool(observed) and observed[-1] in end_ids
-
-
-def _validity(
-    observed: tuple[str, ...],
-    expected: tuple[str, ...] | None,
-    transitions: tuple[ObservedTransition, ...],
-    tied: bool,
-    end_ids: frozenset[str],
-) -> PathValidity:
-    if any(item.assessment is TransitionAssessment.INVALID for item in transitions):
-        return PathValidity.INVALID
-    if tied or expected is None:
-        return PathValidity.INDETERMINATE
-    if observed == expected:
-        return PathValidity.VALID
-    if _is_prefix(observed, expected) and not _on_end(observed, end_ids):
-        return PathValidity.INCOMPLETE
-    return PathValidity.INVALID
-
-
-def _gap_nodes(
-    expected: tuple[str, ...] | None,
-    observed: tuple[str, ...],
-    evaluation: NodeEvaluation,
-) -> tuple[tuple[str, ...], tuple[str, ...]]:
-    if expected is None:
-        return (), ()
-    observed_nodes = set(observed)
-    later = [False] * len(expected)
-    seen_later = False
-    for index in range(len(expected) - 1, -1, -1):
-        later[index] = seen_later
-        if expected[index] in observed_nodes:
-            seen_later = True
-    omitted: list[str] = []
-    unreached: list[str] = []
-    for index, node_id in enumerate(expected):
-        if node_id in observed_nodes:
-            continue
-        status = evaluation.by_id[node_id].status
-        if status is NodeStatus.NOT_REACHED:
-            unreached.append(node_id)
-            continue
-        if status is NodeStatus.SKIPPED or later[index]:
-            omitted.append(node_id)
-    return tuple(omitted), tuple(unreached)
-
-
-def verify_traversal(
-    workflow: Workflow,
-    evaluation: NodeEvaluation,
-    evidence: Evidence,
-) -> Traversal:
-    """Reconstruct the stage progression and check it against the graph."""
-
-    paths = _complete_paths(workflow)
-    expected = _expected_path(paths, evaluation)
-    folded = _fold_events(workflow, _reachable_events(workflow, evidence.stage_events), expected)
-    end_ids = frozenset(node.id for node in workflow.nodes if node.type == "end")
-    omitted, unreached = _gap_nodes(expected, folded.observed, evaluation)
-    validity = _validity(
-        folded.observed,
-        expected,
-        folded.transitions,
-        folded.tied,
-        end_ids,
-    )
-    return Traversal(
-        candidate_paths=paths,
-        expected_path=expected,
-        observed_path=folded.observed,
-        transitions=folded.transitions,
-        omitted_nodes=omitted,
-        unreached_nodes=unreached,
-        validity=validity,
-        complete=validity is PathValidity.VALID,
-        order_tied=folded.tied,
-    )
-
-
-_POINTS = Decimal(100)
-_CENT = Decimal("0.01")
-
-
-def _ratio(numerator: int, denominator: int) -> Decimal:
-    return Decimal(numerator) / Decimal(denominator)
-
-
-def _node_ratio(result: NodeResult) -> Decimal | None:
-    """Credit for one node. Inapplicable and unreached nodes have no ratio."""
-
-    if result.status is NodeStatus.NOT_APPLICABLE or result.status is NodeStatus.NOT_REACHED:
-        return None
-    if result.applicable_count == 0:
-        return None
-    return _ratio(result.satisfied_count, result.applicable_count)
-
-
-def _node_scores(evaluation: NodeEvaluation) -> tuple[NodeScore, ...]:
-    return tuple(
-        NodeScore(node_id=result.node_id, score=_node_ratio(result))
-        for result in evaluation.results
-    )
-
-
-def _established_path(
-    evaluation: NodeEvaluation,
-    traversal: Traversal,
-) -> tuple[str, ...] | None:
-    """The selected branch, when applicability and traversal are both settled."""
-
-    expected = traversal.expected_path
-    if expected is None or traversal.validity is PathValidity.INDETERMINATE:
-        return None
-    for node_id in expected:
-        if evaluation.by_id[node_id].applicability is Applicability.UNCERTAIN:
-            return None
-    return expected
-
-
-def _expected_ratios(
-    evaluation: NodeEvaluation,
-    traversal: Traversal,
-) -> tuple[Decimal, ...] | None:
-    """Ratios for the established branch. Unresolved branches are not averaged."""
-
-    expected = _established_path(evaluation, traversal)
-    if expected is None:
-        return None
-    ratios: list[Decimal] = []
-    for node_id in expected:
-        ratio = _node_ratio(evaluation.by_id[node_id])
-        if ratio is None:
-            continue
-        ratios.append(ratio)
-    if not ratios:
-        return None
-    return tuple(ratios)
-
-
-def _mean(ratios: tuple[Decimal, ...]) -> Decimal:
-    return sum(ratios, start=Decimal(0)) / Decimal(len(ratios))
-
-
-def _transition_score(traversal: Traversal) -> Decimal:
-    observed = len(traversal.transitions)
-    if observed == 0:
-        # No observed transition leaves this factor at 1.
-        # The verdict still requires a complete permitted path.
-        return Decimal(1)
-    permitted = 0
-    for transition in traversal.transitions:
-        if transition.assessment is TransitionAssessment.PERMITTED:
-            permitted += 1
-    return _ratio(permitted, observed)
-
-
-def _points(node_average: Decimal, transition_score: Decimal) -> Decimal:
-    scaled = node_average * transition_score * _POINTS
-    return scaled.quantize(_CENT, rounding=ROUND_HALF_UP)
-
-
-def _material_failure(evaluation: NodeEvaluation, traversal: Traversal) -> bool:
-    if traversal.validity is PathValidity.INVALID:
-        return True
-    return any(result.status is NodeStatus.INCORRECT for result in evaluation.results)
-
-
-def _unresolved(evaluation: NodeEvaluation, traversal: Traversal) -> bool:
-    return _established_path(evaluation, traversal) is None
-
-
-def _missing_credit(evaluation: NodeEvaluation, traversal: Traversal) -> bool:
-    expected = traversal.expected_path
-    if expected is None:
-        return False
-    for node_id in expected:
-        result = evaluation.by_id[node_id]
-        if result.status is NodeStatus.PARTIAL or result.status is NodeStatus.SKIPPED:
-            return True
-        ratio = _node_ratio(result)
-        if ratio is not None and ratio < Decimal(1):
-            return True
-    return False
-
-
-def _has_unreached_expected(evaluation: NodeEvaluation, traversal: Traversal) -> bool:
-    expected = traversal.expected_path
-    if expected is None:
-        return False
-    return any(
-        evaluation.by_id[node_id].status is NodeStatus.NOT_REACHED for node_id in expected
-    )
-
-
-def _verdict(evaluation: NodeEvaluation, traversal: Traversal) -> Verdict:
-    """Prefer a material failure, then an unresolved branch, then an unfinished path."""
-
-    if _material_failure(evaluation, traversal):
-        return Verdict.FAILED
-    if _unresolved(evaluation, traversal):
-        return Verdict.INDETERMINATE
-    if traversal.validity is not PathValidity.VALID:
-        return Verdict.INCOMPLETE
-    if _missing_credit(evaluation, traversal):
-        return Verdict.PARTIAL
-    # An expected stage that was never reached is not a completed outcome.
-    if _has_unreached_expected(evaluation, traversal):
-        return Verdict.INCOMPLETE
-    return Verdict.COMPLETED
-
-
-def score_adherence(evaluation: NodeEvaluation, traversal: Traversal) -> Adherence:
-    """Score criterion completion and permitted progression, then assign a verdict."""
-
-    ratios = _expected_ratios(evaluation, traversal)
-    transition_score = _transition_score(traversal)
-    if ratios is None:
-        node_average = None
-        adherence_score = None
-    else:
-        node_average = _mean(ratios)
-        adherence_score = _points(node_average, transition_score)
-    return Adherence(
-        nodes=_node_scores(evaluation),
-        node_average=node_average,
-        transition_score=transition_score,
-        adherence_score=adherence_score,
-        verdict=_verdict(evaluation, traversal),
-    )
-
-
-__all__ = [
-    "Adherence",
-    "AttemptState",
-    "CriterionAssessment",
-    "NodeEvaluation",
-    "NodeResult",
-    "NodeScore",
-    "NodeStatus",
-    "ObservedTransition",
-    "PathValidity",
-    "TransitionAssessment",
-    "Traversal",
-    "Verdict",
-    "classify_nodes",
-    "score_adherence",
-    "verify_traversal",
-]
+__all__ = ["classify_nodes", "descendants", "reachable_events"]

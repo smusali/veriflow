@@ -1,24 +1,13 @@
 """Print the rubric generated for the assignment workflow."""
 
-import os
-import sys
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-
-from dotenv import load_dotenv
+from common import GRAPH
 
 from src.inputs import load_workflow
-from src.judge import build_rubric, openai_completer
+from src.openai import openai_completer
+from src.rubric import build_rubric
 
-load_dotenv(ROOT / ".env")
-
-workflow = load_workflow(ROOT / "fixtures/assignment_graph.json")
-rubric = build_rubric(
-    workflow,
-    openai_completer(os.environ["OPENAI_API_KEY"], os.environ["OPENAI_MODEL"]),
-)
+workflow = load_workflow(GRAPH)
+rubric = build_rubric(workflow, openai_completer())
 
 for node_id, criteria in rubric.by_node.items():
     print(f"node {node_id}")

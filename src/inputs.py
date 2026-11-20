@@ -3,45 +3,18 @@
 from __future__ import annotations
 
 import json
-import math
 from collections import deque
 from collections.abc import Mapping
 from dataclasses import dataclass
-from enum import StrEnum
 from pathlib import Path
 from types import MappingProxyType
 from typing import Literal, NoReturn
 
+from .errors import ErrorCode, fail_contract as fail
+from .utils import JsonReader, JsonValue, decode_json
+
 type NodeType = Literal["start", "decision", "process", "end"]
 type Role = Literal["user", "assistant"]
-
-
-class Outcome(StrEnum):
-    INPUT_ERROR = "input_error"
-    UNSUPPORTED = "unsupported"
-
-
-class ErrorCode(StrEnum):
-    MALFORMED_JSON = "malformed_json"
-    MISSING_REQUIRED_FIELD = "missing_required_field"
-    UNSUPPORTED_ROLE = "unsupported_role"
-    INVALID_TIMESTAMP = "invalid_timestamp"
-    UNSORTED_TURNS = "unsorted_turns"
-    DUPLICATE_NODE_ID = "duplicate_node_id"
-    DANGLING_EDGE = "dangling_edge"
-    UNSUPPORTED_GRAPH = "unsupported_graph"
-
-
-class ContractError(Exception):
-    """A workflow or transcript that cannot be evaluated."""
-
-    outcome: Outcome
-    code: ErrorCode
-
-    def __init__(self, outcome: Outcome, code: ErrorCode, message: str) -> None:
-        self.outcome = outcome
-        self.code = code
-        super().__init__(message)
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,21 +77,10 @@ class _NodeParts:
     position: Position | None
 
 
-def fail(code: ErrorCode, message: str) -> NoReturn:
-    if code == ErrorCode.UNSUPPORTED_GRAPH:
-        outcome = Outcome.UNSUPPORTED
-    else:
-        outcome = Outcome.INPUT_ERROR
-    raise ContractError(outcome, code, message)
+_reader = JsonReader(lambda message: fail(ErrorCode.MISSING_REQUIRED_FIELD, message))
 
 
-def reject_json_constant(constant: str) -> NoReturn:
-    """Reject NaN and Infinity, which are not JSON numbers."""
-
-    raise json.JSONDecodeError(f"invalid number {constant}", constant, 0)
-
-
-def read_json_document(path: Path, label: str) -> object:
+def read_json_document(path: Path, label: str) -> JsonValue:
     try:
         text = path.read_text(encoding="utf-8")
     except UnicodeDecodeError as exc:
@@ -127,82 +89,55 @@ def read_json_document(path: Path, label: str) -> object:
             f"{label} file is not valid JSON: {exc.reason}.",
         )
     try:
-        document: object = json.loads(text, parse_constant=reject_json_constant)
+        return decode_json(text)
     except json.JSONDecodeError as exc:
         fail(
             ErrorCode.MALFORMED_JSON,
             f"{label} file is not valid JSON: {exc.msg}.",
         )
-    return document
 
 
-def expect_object(value: object, location: str) -> dict[str, object]:
-    if not isinstance(value, dict):
-        fail(ErrorCode.MISSING_REQUIRED_FIELD, f"{location} must be a JSON object.")
-    collected: dict[str, object] = {}
-    for key, item in value.items():
-        if not isinstance(key, str):
-            fail(ErrorCode.MISSING_REQUIRED_FIELD, f"{location} must use string keys.")
-        collected[key] = item
-    return collected
+def expect_object(value: JsonValue, location: str) -> dict[str, JsonValue]:
+    return _reader.expect_object(value, location)
 
 
-def expect_array(value: object, location: str) -> tuple[object, ...]:
-    if not isinstance(value, list):
-        fail(ErrorCode.MISSING_REQUIRED_FIELD, f"{location} must be a JSON array.")
-    items: list[object] = []
-    for item in value:
-        items.append(item)
-    return tuple(items)
+def expect_array(value: JsonValue, location: str) -> tuple[JsonValue, ...]:
+    return _reader.expect_array(value, location)
 
 
-def require_field(fields: Mapping[str, object], name: str, location: str) -> object:
-    if name not in fields:
-        fail(ErrorCode.MISSING_REQUIRED_FIELD, f"{location}.{name} is required.")
-    return fields[name]
+def require_field(fields: Mapping[str, JsonValue], name: str, location: str) -> JsonValue:
+    return _reader.require_field(fields, name, location)
 
 
-def require_text(value: object, location: str, *, allow_empty: bool) -> str:
-    if not isinstance(value, str):
-        fail(ErrorCode.MISSING_REQUIRED_FIELD, f"{location} must be a string.")
-    if not allow_empty and value == "":
-        fail(ErrorCode.MISSING_REQUIRED_FIELD, f"{location} must be a non-empty string.")
-    return value
+def require_text(value: JsonValue, location: str, *, allow_empty: bool) -> str:
+    return _reader.require_text(value, location, allow_empty=allow_empty)
 
 
 def require_text_field(
-    fields: Mapping[str, object],
+    fields: Mapping[str, JsonValue],
     name: str,
     location: str,
     *,
     allow_empty: bool,
 ) -> str:
-    return require_text(
-        require_field(fields, name, location),
-        f"{location}.{name}",
-        allow_empty=allow_empty,
-    )
+    return _reader.require_text_field(fields, name, location, allow_empty=allow_empty)
 
 
-def read_finite_number(value: object, location: str, code: ErrorCode) -> int | float:
-    # bool is an int subclass, so it is excluded before the int check.
-    if isinstance(value, bool):
-        fail(code, f"{location} must be a finite number.")
-    if isinstance(value, int):
-        return value
-    if isinstance(value, float) and math.isfinite(value):
-        return value
-    fail(code, f"{location} must be a finite number.")
+def read_finite_number(value: JsonValue, location: str, code: ErrorCode) -> int | float:
+    def reject(message: str) -> NoReturn:
+        fail(code, message)
+
+    return _reader.read_finite_number(value, location, reject)
 
 
-def require_timestamp(value: object, location: str) -> int | float:
+def require_timestamp(value: JsonValue, location: str) -> int | float:
     number = read_finite_number(value, location, ErrorCode.INVALID_TIMESTAMP)
     if number < 0:
         fail(ErrorCode.INVALID_TIMESTAMP, f"{location} must be nonnegative.")
     return number
 
 
-def require_role(value: object, location: str) -> Role:
+def require_role(value: JsonValue, location: str) -> Role:
     if not isinstance(value, str):
         fail(ErrorCode.MISSING_REQUIRED_FIELD, f"{location} must be a string.")
     if value == "user":
@@ -233,7 +168,7 @@ def node_type_from_name(type_name: str, location: str) -> NodeType:
     )
 
 
-def read_position(value: object, location: str) -> Position:
+def read_position(value: JsonValue, location: str) -> Position:
     fields = expect_object(value, location)
     return Position(
         x=read_finite_number(
@@ -249,7 +184,7 @@ def read_position(value: object, location: str) -> Position:
     )
 
 
-def read_node_parts(value: object, index: int) -> _NodeParts:
+def read_node_parts(value: JsonValue, index: int) -> _NodeParts:
     location = f"nodes[{index}]"
     fields = expect_object(value, location)
     data_location = f"{location}.data"
@@ -282,7 +217,7 @@ def finish_node(parts: _NodeParts, index: int) -> WorkflowNode:
     )
 
 
-def read_edge(value: object, index: int) -> WorkflowEdge:
+def read_edge(value: JsonValue, index: int) -> WorkflowEdge:
     location = f"edges[{index}]"
     fields = expect_object(value, location)
     return WorkflowEdge(
@@ -381,7 +316,7 @@ def require_reachable_end(
     )
 
 
-def parse_workflow(document: object) -> Workflow:
+def parse_workflow(document: JsonValue) -> Workflow:
     """Validate a decoded workflow object and return its typed graph."""
 
     root = expect_object(document, "workflow")
@@ -405,7 +340,7 @@ def parse_workflow(document: object) -> Workflow:
     )
 
 
-def read_turn(value: object, index: int) -> TranscriptTurn:
+def read_turn(value: JsonValue, index: int) -> TranscriptTurn:
     location = f"turns[{index}]"
     fields = expect_object(value, location)
     role_value = require_field(fields, "role", location)
@@ -429,7 +364,7 @@ def read_turn(value: object, index: int) -> TranscriptTurn:
     )
 
 
-def parse_transcript(document: object) -> Transcript:
+def parse_transcript(document: JsonValue) -> Transcript:
     """Validate a decoded transcript array and keep its original order."""
 
     items = expect_array(document, "transcript")
@@ -463,11 +398,8 @@ def load_transcript(path: Path) -> Transcript:
 
 
 __all__ = [
-    "ContractError",
-    "ErrorCode",
     "NodeData",
     "NodeType",
-    "Outcome",
     "Position",
     "Role",
     "Transcript",

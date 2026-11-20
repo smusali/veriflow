@@ -10,10 +10,13 @@ from enum import StrEnum
 from types import MappingProxyType
 
 from .inputs import Workflow
-from .judge import Applicability, CriterionFinding, Evidence, FindingResult
-from .verifier import (
+from .models import (
     Adherence,
+    Applicability,
     CriterionAssessment,
+    CriterionFinding,
+    Evidence,
+    FindingResult,
     NodeEvaluation,
     NodeResult,
     NodeStatus,

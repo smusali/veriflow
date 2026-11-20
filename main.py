@@ -8,10 +8,9 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.inputs import ContractError, load_transcript, load_workflow
-from src.judge import JudgeError, build_rubric, extract_evidence, openai_completer
-from src.report import EvaluationReport, assemble_report, render_report
-from src.verifier import classify_nodes, score_adherence, verify_traversal
+from src.errors import ContractError, JudgeError
+from src.evaluate import evaluate
+from src.report import render_report
 
 _EVALUATION_ERROR = "evaluation_error"
 
@@ -23,18 +22,10 @@ class _Arguments:
     output: Path
 
 
-def evaluate(graph: Path, transcript: Path) -> EvaluationReport:
-    """Validate the inputs, then judge, classify, traverse, and score them."""
-
-    workflow = load_workflow(graph)
-    conversation = load_transcript(transcript)
-    completer = openai_completer()
-    rubric = build_rubric(workflow, completer)
-    evidence = extract_evidence(conversation, rubric, completer)
-    evaluation = classify_nodes(workflow, rubric, evidence, conversation)
-    traversal = verify_traversal(workflow, evaluation, evidence)
-    adherence = score_adherence(evaluation, traversal)
-    return assemble_report(workflow, evaluation, traversal, adherence, evidence)
+class _Parsed(argparse.Namespace):
+    graph: Path
+    transcript: Path
+    output: Path
 
 
 def _existing_file(value: str) -> Path:
@@ -42,12 +33,6 @@ def _existing_file(value: str) -> Path:
     if not path.is_file():
         raise argparse.ArgumentTypeError(f"File not found: {path}")
     return path
-
-
-def _path_argument(value: object, flag: str) -> Path:
-    if isinstance(value, Path):
-        return value
-    raise TypeError(f"{flag} must be a path.")
 
 
 def _parse_args(argv: list[str] | None) -> _Arguments:
@@ -72,11 +57,12 @@ def _parse_args(argv: list[str] | None) -> _Arguments:
         required=True,
         help="Path to write the result JSON.",
     )
-    parsed = parser.parse_args(argv)
+    parsed = _Parsed()
+    parser.parse_args(argv, namespace=parsed)
     return _Arguments(
-        graph=_path_argument(parsed.graph, "--graph"),
-        transcript=_path_argument(parsed.transcript, "--transcript"),
-        output=_path_argument(parsed.output, "--output"),
+        graph=parsed.graph,
+        transcript=parsed.transcript,
+        output=parsed.output,
     )
 
 

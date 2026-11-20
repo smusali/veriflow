@@ -71,15 +71,72 @@ flowchart TD
   evidence --> report
 ```
 
-- [src/inputs.py](src/inputs.py) loads the graph and the transcript.
-- [src/rubric.py](src/rubric.py), [src/prompts.py](src/prompts.py), and [src/openai.py](src/openai.py) build the rubric.
-- [src/evidence.py](src/evidence.py) records findings and stage events.
-- [src/nodes.py](src/nodes.py) assigns one status per node.
-- [src/traversal.py](src/traversal.py) checks the path.
-- [src/score.py](src/score.py) computes the score and the verdict.
-- [src/report.py](src/report.py) writes the JSON.
+### Components
 
-[src/evaluate.py](src/evaluate.py) fixes that order.
+[src/evaluate.py](src/evaluate.py) runs these boxes in the order below. Workflow and Transcript are the inputs. Completer is the model call. The other six are records passed from one stage to the next.
+
+**Workflow**
+
+- **Definition.** The directed graph of stages the assistant was supposed to follow.
+- **Purpose.** It supplies the nodes, the allowed edges, and the start.
+- **What.** [`load_workflow`](src/inputs.py) reads nodes (`start`, `decision`, `process`, `end`), labels, descriptions, edges, the single start id, and outgoing targets, and rejects a duplicate id, a dangling edge, a cycle, more than one start, or no reachable end.
+- **Why.** The graph is fixed before any model call: descriptions feed the rubric, and edges feed traversal.
+
+**Transcript**
+
+- **Definition.** The conversation in file order.
+- **Purpose.** It is the speech later findings cite.
+- **What.** [`load_transcript`](src/inputs.py) reads turns with role `user` or `assistant`, content, and beginning and end times, keeps overlapping intervals in file order, and rejects an unsupported role, an invalid timestamp, or a decreasing turn start. An empty file is still a transcript.
+- **Why.** Status, path, and score are later records.
+
+**Completer**
+
+- **Definition.** One structured call to the configured OpenAI model.
+- **Purpose.** It returns a JSON document for the two language steps.
+- **What.** [`openai_completer`](src/openai.py) builds it from `OPENAI_API_KEY` and `OPENAI_MODEL` at temperature 0.0. [`prompts.py`](src/prompts.py) holds the instructions and schemas for both steps. [`complete_or_repair`](src/models.py) sends an invalid document back once.
+- **Why.** Rubric generation and evidence judgment are the only callers, and both return findings. Path, status, and score stay in the stages below.
+
+**Rubric**
+
+- **Definition.** The obligations taken from the node descriptions.
+- **Purpose.** It is the stable list the transcript is judged against.
+- **What.** [`build_rubric`](src/rubric.py) sends id, label, and description, then checks ids, grounding in `source_text`, alternative groups, and the minimum split from the descriptions. A criterion has a requirement type (`required`, `conditional`, `alternative`), condition, alternative group, `exact_wording`, `expected_behavior`, and subrequirements. Criterion rules stay in [Semantic Evidence](#semantic-evidence).
+- **Why.** Only the workflow is sent. The transcript is read at the next stage.
+
+**Evidence**
+
+- **Definition.** Findings about the transcript, plus the stage events those findings support.
+- **Purpose.** It records what each obligation came to.
+- **What.** [`extract_evidence`](src/evidence.py) stores, per obligation, applicability (`applicable`, `not_applicable`, `uncertain`), result (`met`, `unmet`, `contradicted`, `insufficient`), cited turns, an action turn, and a reason. A stage event names the node, turn, start, and anchor. Cited turns must exist. An empty transcript is judged locally, with no model call. How paraphrase, promise, quotation, and correction are read stays in [Semantic Evidence](#semantic-evidence).
+- **Why.** Node status and path are assigned from this record afterward.
+
+**Node results**
+
+- **Definition.** One status for every workflow node.
+- **Purpose.** It is the structural reading of the findings.
+- **What.** [`classify_nodes`](src/nodes.py) returns status, applicability, attempt, criterion assessments, evidence turns, missing and violated ids, satisfied and applicable counts, and an explanation. Precedence is applicability, then a contradiction, then full completion, then partial progress, then a skip when there was an opportunity, otherwise `not_reached`. A conditional finding cited before a predecessor stage was entered is withdrawn. The status list stays in [Applicability](#applicability).
+- **Why.** Python assigns the status, so the same findings produce the same statuses.
+
+**Traversal**
+
+- **Definition.** The path taken, checked against the paths the graph allows.
+- **Purpose.** It keeps node satisfaction separate from allowed movement.
+- **What.** [`verify_traversal`](src/traversal.py) records every complete path, the expected path for the established branch, the observed path, each hop (`permitted`, `invalid`, `unresolved`), omitted and unreached nodes, and path validity (`valid`, `invalid`, `incomplete`, `indeterminate`). Observed stages are assistant events after a predecessor was entered. The path cases stay in [Traversal](#traversal).
+- **Why.** A satisfied node on a forbidden hop remains a path failure, and path validity stays in Python.
+
+**Adherence**
+
+- **Definition.** The score and the verdict for the established path.
+- **Purpose.** It combines criterion credit on that path with the share of observed hops marked `permitted`.
+- **What.** [`score_adherence`](src/score.py) stores a ratio per contributing node, their mean, the transition factor, an adherence score from 0 to 100 rounded half up to cents (null when the path or the ratios are unsettled), and one verdict. The first match wins: `failed`, `indeterminate`, `incomplete`, `partial`, `completed`. The formula stays in [Scoring](#scoring).
+- **Why.** The score is computed from node results and traversal, so the same findings keep the same score.
+
+**Report**
+
+- **Definition.** The JSON document for one evaluation.
+- **Purpose.** It publishes the decision in one file.
+- **What.** [`assemble_report`](src/report.py) and [`render_report`](src/report.py) write `overall`, `expected_path`, `observed_path`, `transitions`, `node_results`, `deviations`, and `uncertainty`. Field meanings stay in [Result JSON](#result-json).
+- **Why.** The report renders records the earlier stages already decided.
 
 ## Semantic Evidence
 
